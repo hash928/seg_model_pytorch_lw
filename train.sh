@@ -5,17 +5,19 @@ export CUDA_VISIBLE_DEVICES="0"
 
 # 运行训练脚本
 python train.py \
-    --train_image_path "/home/data/sam-unet/xiangdao_data3/Training_Images/" \
-    --train_mask_path "/home/data/sam-unet/xiangdao_data3/Training_Labels/" \
-    --val_image_path "/home/data/sam-unet/xiangdao_data3/Validation_Images/" \
-    --val_mask_path "/home/data/sam-unet/xiangdao_data3/Validation_Labels/" \
-    --save_path "/home/seg_model1/save/sam2unet/" \
-    --epoch "20" \
+    --train_image_path "/home/data/sam-unet/xiangdao_duo_data1/Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/xiangdao_duo_data1/Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/xiangdao_duo_data1/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/xiangdao_duo_data1/Validation_Labels/" \
+    --save_path "/home/seg_model1/save/sam2unet1/" \
+    --epoch "100" \
     --lr "0.001" \
     --batch_size "8" \
     --model_type "sam2unet" \
+    --num_workers "3" \
     --hiera_path "/home/SAM2-UNet/sam2_hiera_large.pt" \
-    --num_workers "3"
+    --class_config "0:249,250,20,道路;1:77,203,129,0,0,0,建筑物;2:61,38,168,背景" \
+    --save_interval "10"
 
 # 可选参数说明：
 # 1. 预训练模型路径
@@ -29,3 +31,7 @@ python train.py \
 # --deep_supervision
 # 5. 数据加载时使用的子进程数量
 # --num_workers "3"   
+# 6. 类别配置
+# --class_config "0:249,250,20,道路;1:77,203,129,0,0,0,建筑物;2:61,38,168,背景" 
+# 7. 保存检查点间隔
+# --save_interval "10"

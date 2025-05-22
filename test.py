@@ -8,7 +8,6 @@ from models.SAM2UNet import SAM2UNet
 from models.UNet import UNet
 from models.FCN import FCN
 from models.UNetPlusPlus import UNetPlusPlus, UNetPlus
-from tqdm import tqdm
 import numpy as np
 import cv2
 import re
@@ -70,6 +69,8 @@ parser.add_argument("--save_path", type=str, required=True,
 parser.add_argument("--batch_size", default=12, type=int)
 parser.add_argument("--backbone", type=str, default="resnet50", choices=["resnet50", "resnet34"],
                     help="FCN模型的backbone (仅当model_type为fcn时需要)")
+parser.add_argument("--class_config", type=str,
+                    help="类别配置，格式：类别索引:颜色RGB值,颜色RGB值;类别名称")
 
 # 首先尝试从shell脚本读取参数
 shell_args = parse_shell_args()
@@ -88,15 +89,70 @@ if shell_args:
 args = parser.parse_args()
 
 def calculate_metrics(pred, mask):
-    pred = (pred > 0.5).float()
-    intersection = (pred * mask).sum()
-    union = (pred + mask).sum() - intersection
-    iou = (intersection + 1e-6) / (union + 1e-6)
-    dice = (2 * intersection + 1e-6) / (pred.sum() + mask.sum() + 1e-6)
-    return iou.item(), dice.item()
+    # 将预测转换为类别索引
+    pred = torch.argmax(pred, dim=1)
+    
+    # 计算每个类别的IoU和Dice系数
+    ious = []
+    dices = []
+    
+    for class_idx in range(3):  # 3个类别
+        pred_mask = (pred == class_idx)
+        true_mask = (mask == class_idx)
+        
+        intersection = (pred_mask & true_mask).sum().float()
+        union = (pred_mask | true_mask).sum().float()
+        
+        iou = (intersection + 1e-6) / (union + 1e-6)
+        dice = (2 * intersection + 1e-6) / (pred_mask.sum() + true_mask.sum() + 1e-6)
+        
+        ious.append(iou.item())
+        dices.append(dice.item())
+    
+    # 返回平均IoU和Dice系数
+    return sum(ious) / len(ious), sum(dices) / len(dices)
+
+def parse_class_config(config_str):
+    """解析类别配置字符串"""
+    if not config_str:
+        return None, None
+        
+    class_colors = {}
+    class_names = {}
+    
+    # 分割每个类别的配置
+    class_configs = config_str.split(';')
+    
+    for config in class_configs:
+        if not config:
+            continue
+            
+        # 分割类别索引和颜色配置
+        class_idx_str, color_config = config.split(':')
+        class_idx = int(class_idx_str)
+        
+        # 分割颜色和名称
+        parts = color_config.split(',')
+        colors = []
+        
+        # 解析颜色值
+        for i in range(0, len(parts)-1, 3):
+            if i+2 < len(parts):
+                r = int(parts[i])
+                g = int(parts[i+1])
+                b = int(parts[i+2])
+                colors.append((r, g, b))
+        
+        # 最后一个部分是类别名称
+        class_name = parts[-1]
+        
+        class_colors[class_idx] = colors
+        class_names[class_idx] = class_name
+        
+    return class_colors, class_names
 
 @torch.no_grad()
-def test(model, test_loader, device, model_type, save_path, test_mask_path):
+def test(model, test_loader, device, model_type, save_path, test_mask_path, class_colors=None, class_names=None):
     model.eval()
     total_iou = 0
     total_dice = 0
@@ -112,6 +168,14 @@ def test(model, test_loader, device, model_type, save_path, test_mask_path):
     with open(metrics_file, 'w') as f:
         f.write('Image Name,IoU,Dice\n')
     
+    # 如果没有提供类别配置，使用默认颜色
+    if class_colors is None:
+        class_colors = {
+            0: [(249, 250, 20)],  # 第一个类别
+            1: [(77, 203, 129)],  # 第二个类别
+            2: [(61, 38, 168)]    # 第三个类别
+        }
+    
     for batch_idx, batch in enumerate(test_loader):
         x = batch['image'].to(device)
         target = batch['label'].to(device)
@@ -124,37 +188,40 @@ def test(model, test_loader, device, model_type, save_path, test_mask_path):
             pred = preds[-1]  # 使用最后一个预测
         else:
             pred = model(x)
-            
-        pred = torch.sigmoid(pred)
         
         # 保存预测结果
         pred_np = pred.cpu().numpy()
         target_np = target.cpu().numpy()
         
         for i in range(pred_np.shape[0]):
-            pred_img = (pred_np[i, 0] * 255).astype(np.uint8)
+            # 获取预测的类别索引
+            pred_class = np.argmax(pred_np[i], axis=0)
+            
+            # 创建RGB预测图像
+            pred_rgb = np.zeros((pred_class.shape[0], pred_class.shape[1], 3), dtype=np.uint8)
+            
+            # 使用配置的颜色映射
+            for class_idx, colors in class_colors.items():
+                # 如果类别有多个颜色，随机选择一个
+                color = colors[np.random.randint(0, len(colors))]
+                pred_rgb[pred_class == class_idx] = color
+            
             # 使用标签图像名称
             mask_name = test_masks[batch_idx * args.batch_size + i]
             
             # 读取原始标签图像以获取尺寸
             mask_path = os.path.join(test_mask_path, mask_name)
-            original_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+            original_mask = cv2.imread(mask_path)
             if original_mask is None:
                 print(f"Warning: Could not read mask {mask_path}")
                 continue
                 
             # 调整预测结果到原始标签尺寸
-            pred_img = cv2.resize(pred_img, (original_mask.shape[1], original_mask.shape[0]), 
+            pred_rgb = cv2.resize(pred_rgb, (original_mask.shape[1], original_mask.shape[0]), 
                                 interpolation=cv2.INTER_NEAREST)
             
             # 计算单个图像的指标
-            pred_binary = (pred_img > 127).astype(np.float32)
-            mask_binary = (original_mask > 127).astype(np.float32)
-            
-            intersection = np.sum(pred_binary * mask_binary)
-            union = np.sum(pred_binary) + np.sum(mask_binary) - intersection
-            iou = (intersection + 1e-6) / (union + 1e-6)
-            dice = (2 * intersection + 1e-6) / (np.sum(pred_binary) + np.sum(mask_binary) + 1e-6)
+            iou, dice = calculate_metrics(pred[i:i+1], target[i:i+1])
             
             # 保存指标到CSV文件
             with open(metrics_file, 'a') as f:
@@ -164,7 +231,7 @@ def test(model, test_loader, device, model_type, save_path, test_mask_path):
             print(f'Image: {mask_name}, IoU: {iou:.4f}, Dice: {dice:.4f}')
             
             save_name = os.path.join(save_path, f"pred_{mask_name}")
-            cv2.imwrite(save_name, pred_img)
+            cv2.imwrite(save_name, pred_rgb)
             
             total_iou += iou
             total_dice += dice
@@ -184,30 +251,35 @@ def test(model, test_loader, device, model_type, save_path, test_mask_path):
     return avg_iou, avg_dice
 
 def main(args):
+    # 解析类别配置
+    class_colors, class_names = parse_class_config(args.class_config)
+    
     # 创建测试数据加载器
-    test_dataset = FullDataset(args.test_image_path, args.test_mask_path, 352, mode='test')
+    test_dataset = FullDataset(args.test_image_path, args.test_mask_path, 352, mode='test',
+                              class_colors=class_colors, class_names=class_names)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=3)
     
     device = torch.device("cuda")
     
     # 根据模型类型创建模型
     if args.model_type == "sam2unet":
-        model = SAM2UNet()
+        model = SAM2UNet(n_classes=3)
     elif args.model_type == "unet":
-        model = UNet(n_channels=3, n_classes=1)
+        model = UNet(n_channels=3, n_classes=3)
     elif args.model_type == "unetplusplus":
-        model = UNetPlusPlus(n_channels=3, n_classes=1, deep_supervision=args.deep_supervision)
+        model = UNetPlusPlus(n_channels=3, n_classes=3, deep_supervision=args.deep_supervision)
     elif args.model_type == "unetplus":
-        model = UNetPlus(n_channels=3, n_classes=1)
+        model = UNetPlus(n_channels=3, n_classes=3)
     else:  # fcn
-        model = FCN(n_channels=3, n_classes=1, backbone=args.backbone)
+        model = FCN(n_channels=3, n_classes=3, backbone=args.backbone)
     
     # 使用weights_only=True加载模型权重
     model.load_state_dict(torch.load(args.checkpoint, weights_only=True))
     model.to(device)
     
     # 测试模型
-    test_iou, test_dice = test(model, test_loader, device, args.model_type, args.save_path, args.test_mask_path)
+    test_iou, test_dice = test(model, test_loader, device, args.model_type, args.save_path, 
+                              args.test_mask_path, class_colors, class_names)
     print(f'Test IoU: {test_iou:.4f}, Test Dice: {test_dice:.4f}')
 
 if __name__ == "__main__":

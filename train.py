@@ -1,7 +1,6 @@
 import os
 import argparse
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from dataset import FullDataset
@@ -10,14 +9,11 @@ from models.UNet import UNet
 from models.FCN import FCN
 from models.UNetPlusPlus import UNetPlusPlus, UNetPlus
 from tqdm import tqdm
-import numpy as np
 from torchsummary import summary
 import csv
 from datetime import datetime
-import random
 import torch.optim as opt
 from torch.optim.lr_scheduler import CosineAnnealingLR
-import logging
 import re
 import sys
 
@@ -96,6 +92,10 @@ parser.add_argument("--deep_supervision", action="store_true",
                     help="是否使用深度监督（仅当model_type为unetplusplus时有效）")
 parser.add_argument("--num_workers", type=int, default=3,
                     help="数据加载时使用的子进程数量，建议设置为CPU核心数的2-4倍")
+parser.add_argument("--class_config", type=str,
+                    help="类别配置，格式：类别索引:颜色RGB值,颜色RGB值;类别名称")
+parser.add_argument("--save_interval", type=int, default=10,
+                    help="interval between saving checkpoints")
 
 # 首先尝试从shell脚本读取参数
 shell_args = parse_shell_args()
@@ -114,22 +114,33 @@ if shell_args:
 args = parser.parse_args()
 
 def structure_loss(pred, mask):
-    weit = 1 + 5*torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
-    wbce = F.binary_cross_entropy_with_logits(pred, mask, reduction='none')
-    wbce = (weit*wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
-    pred = torch.sigmoid(pred)
-    inter = ((pred * mask)*weit).sum(dim=(2, 3))
-    union = ((pred + mask)*weit).sum(dim=(2, 3))
-    wiou = 1 - (inter + 1)/(union - inter+1)
-    return (wbce + wiou).mean()
+    # 使用交叉熵损失
+    loss = F.cross_entropy(pred, mask, reduction='mean')
+    return loss
 
 def calculate_metrics(pred, mask):
-    pred = (pred > 0.5).float()
-    intersection = (pred * mask).sum()
-    union = (pred + mask).sum() - intersection
-    iou = (intersection + 1e-6) / (union + 1e-6)
-    dice = (2 * intersection + 1e-6) / (pred.sum() + mask.sum() + 1e-6)
-    return iou.item(), dice.item()
+    # 将预测转换为类别索引
+    pred = torch.argmax(pred, dim=1)
+    
+    # 计算每个类别的IoU和Dice系数
+    ious = []
+    dices = []
+    
+    for class_idx in range(3):  # 3个类别
+        pred_mask = (pred == class_idx)
+        true_mask = (mask == class_idx)
+        
+        intersection = (pred_mask & true_mask).sum().float()
+        union = (pred_mask | true_mask).sum().float()
+        
+        iou = (intersection + 1e-6) / (union + 1e-6)
+        dice = (2 * intersection + 1e-6) / (pred_mask.sum() + true_mask.sum() + 1e-6)
+        
+        ious.append(iou.item())
+        dices.append(dice.item())
+    
+    # 返回平均IoU和Dice系数
+    return sum(ious) / len(ious), sum(dices) / len(dices)
 
 @torch.no_grad()
 def validate(model, val_loader, device, model_type):
@@ -149,35 +160,44 @@ def validate(model, val_loader, device, model_type):
         leave=True
     )
     
-    for batch in progress_bar:
-        x = batch['image'].to(device)
-        target = batch['label'].to(device)
-        
-        if model_type == "sam2unet":
-            pred0, pred1, pred2 = model(x)
-            pred = pred2  # 使用最后一个预测
-        elif model_type == "unetplusplus" and isinstance(model, UNetPlusPlus) and model.deep_supervision:
-            preds = model(x)
-            pred = preds[-1]  # 使用最后一个预测
-        else:
-            pred = model(x)
+    try:
+        for batch in progress_bar:
+            x = batch['image'].to(device)
+            target = batch['label'].to(device)
             
-        loss = structure_loss(pred, target)
-        
-        pred = torch.sigmoid(pred)
-        iou, dice = calculate_metrics(pred, target)
-        
-        batch_size = x.size(0)
-        total_loss += loss.item() * batch_size
-        total_iou += iou * batch_size
-        total_dice += dice * batch_size
-        num_samples += batch_size
-        
-        progress_bar.set_postfix({
-            'loss': f'{loss.item():.4f}',
-            'iou': f'{iou:.4f}',
-            'dice': f'{dice:.4f}'
-        })
+            if model_type == "sam2unet":
+                pred0, pred1, pred2 = model(x)
+                pred = pred2  # 使用最后一个预测
+            elif model_type == "unetplusplus" and isinstance(model, UNetPlusPlus) and model.deep_supervision:
+                preds = model(x)
+                pred = preds[-1]  # 使用最后一个预测
+            else:
+                pred = model(x)
+                
+            loss = structure_loss(pred, target)
+            iou, dice = calculate_metrics(pred, target)
+            
+            batch_size = x.size(0)
+            total_loss += loss.item() * batch_size
+            total_iou += iou * batch_size
+            total_dice += dice * batch_size
+            num_samples += batch_size
+            
+            # 更新进度条
+            progress_bar.set_postfix({
+                'loss': f'{loss.item():.4f}',
+                'iou': f'{iou:.4f}',
+                'dice': f'{dice:.4f}'
+            })
+            
+    except Exception as e:
+        print(f"验证过程中出现错误: {str(e)}")
+        # 如果出现错误，返回当前的平均值
+        if num_samples > 0:
+            return total_loss/num_samples, total_iou/num_samples, total_dice/num_samples
+        else:
+            # 如果没有处理任何样本，返回默认值
+            return float('inf'), 0.0, 0.0
     
     return total_loss/num_samples, total_iou/num_samples, total_dice/num_samples
 
@@ -208,17 +228,77 @@ def print_model_structure(model, model_type):
     model = model.to(device)  # 将模型移回原设备
     print(f"{'='*50}\n")
 
-def main(args):    
-    # 创建训练和验证数据加载器
-    train_dataset = FullDataset(args.train_image_path, args.train_mask_path, 352, mode='train')
-    val_dataset = FullDataset(args.val_image_path, args.val_mask_path, 352, mode='val')
+def parse_class_config(config_str):
+    """解析类别配置字符串"""
+    if not config_str:
+        return None, None
+        
+    class_colors = {}
+    class_names = {}
     
-    # num_workers参数用于指定数据加载时使用的子进程数量
-    # 当num_workers > 0时，使用多进程加载数据,可以加快数据读取速度
-    # 当num_workers = 0时，使用主进程加载数据
-    # 这里设置为3个子进程并行加载数据
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    # 分割每个类别的配置
+    class_configs = config_str.split(';')
+    
+    for config in class_configs:
+        if not config:
+            continue
+            
+        # 分割类别索引和颜色配置
+        class_idx_str, color_config = config.split(':')
+        class_idx = int(class_idx_str)
+        
+        # 分割颜色和名称
+        parts = color_config.split(',')
+        colors = []
+        
+        # 解析颜色值
+        for i in range(0, len(parts)-1, 3):
+            if i+2 < len(parts):
+                r = int(parts[i])
+                g = int(parts[i+1])
+                b = int(parts[i+2])
+                colors.append((r, g, b))
+        
+        # 最后一个部分是类别名称
+        class_name = parts[-1]
+        
+        class_colors[class_idx] = colors
+        class_names[class_idx] = class_name
+        
+    return class_colors, class_names
+
+def main(args):    
+    # 解析类别配置
+    class_colors, class_names = parse_class_config(args.class_config)
+    
+    # 创建训练和验证数据加载器
+    train_dataset = FullDataset(args.train_image_path, args.train_mask_path, 352, mode='train',
+                            class_colors=class_colors, class_names=class_names)
+    val_dataset = FullDataset(args.val_image_path, args.val_mask_path, 352, mode='val',
+                            class_colors=class_colors, class_names=class_names)
+    
+    # 优化数据加载器配置
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=args.batch_size, 
+        shuffle=True, 
+        num_workers=args.num_workers, 
+        pin_memory=True,
+        prefetch_factor=2,  # 预加载2个batch的数据
+        persistent_workers=True  # 保持worker进程存活
+    )
+    
+    # 验证数据加载器也使用相同的优化
+    val_batch_size = min(args.batch_size, 4)  # 验证时使用较小的batch_size
+    val_loader = DataLoader(
+        val_dataset, 
+        batch_size=val_batch_size, 
+        shuffle=False, 
+        num_workers=min(args.num_workers, 2), 
+        pin_memory=True,
+        prefetch_factor=2,
+        persistent_workers=True
+    )
     
     device = torch.device("cuda")
     
@@ -226,15 +306,15 @@ def main(args):
     if args.model_type == "sam2unet":
         if not args.hiera_path:
             raise ValueError("使用SAM2-UNet模型时必须提供hiera_path参数")
-        model = SAM2UNet(args.hiera_path)
+        model = SAM2UNet(args.hiera_path, n_classes=3)
     elif args.model_type == "unet":
-        model = UNet(n_channels=3, n_classes=1)
+        model = UNet(n_channels=3, n_classes=3)
     elif args.model_type == "unetplusplus":
-        model = UNetPlusPlus(n_channels=3, n_classes=1, deep_supervision=args.deep_supervision)
+        model = UNetPlusPlus(n_channels=3, n_classes=3, deep_supervision=args.deep_supervision)
     elif args.model_type == "unetplus":
-        model = UNetPlus(n_channels=3, n_classes=1)
+        model = UNetPlus(n_channels=3, n_classes=3)
     else:  # fcn
-        model = FCN(n_channels=3, n_classes=1, backbone=args.backbone)
+        model = FCN(n_channels=3, n_classes=3, backbone=args.backbone)
     
     # 如果提供了预训练模型路径，加载预训练权重
     if args.pretrained_path:
@@ -310,9 +390,9 @@ def main(args):
         )
         
         for i, batch in progress_bar:
-            x = batch['image'].to(device)
-            target = batch['label'].to(device)
-            optim.zero_grad()
+            x = batch['image'].to(device, non_blocking=True)  # 使用非阻塞传输
+            target = batch['label'].to(device, non_blocking=True)
+            optim.zero_grad(set_to_none=True)  # 更高效的梯度清零
             
             if args.model_type == "sam2unet":
                 pred0, pred1, pred2 = model(x)
@@ -333,8 +413,9 @@ def main(args):
             optim.step()
 
             # 计算训练指标
-            pred = torch.sigmoid(pred)
-            iou, dice = calculate_metrics(pred, target)
+            with torch.no_grad():  # 避免不必要的梯度计算
+                pred = torch.sigmoid(pred)
+                iou, dice = calculate_metrics(pred, target)
             
             train_loss += loss.item()
             train_iou += iou
@@ -347,7 +428,7 @@ def main(args):
                     'iou': f'{iou:.4f}',
                     'dice': f'{dice:.4f}'
                 })
-
+        
         avg_train_loss = train_loss / num_train_batches
         avg_train_iou = train_iou / num_train_batches
         avg_train_dice = train_dice / num_train_batches
@@ -372,7 +453,7 @@ def main(args):
         # 记录指标到CSV
         csv_writer.writerow([epoch+1, avg_train_loss, avg_train_iou, avg_train_dice, 
                            val_loss, val_iou, val_dice, current_lr])
-        csv_file.flush()  # 确保数据写入文件
+        csv_file.flush()
         
         # 保存最佳模型
         if val_iou > best_val_iou:
@@ -383,7 +464,7 @@ def main(args):
             print(f'\n保存最佳模型，IoU: {best_val_iou:.4f}')
         
         # 定期保存检查点
-        if (epoch+1) % 5 == 0 or (epoch+1) == args.epoch:
+        if (epoch+1) % args.save_interval == 0 or (epoch+1) == args.epoch:
             model_name = f'{args.model_type}-{epoch+1}.pth'
             torch.save(model.state_dict(), 
                       os.path.join(args.save_path, model_name))
