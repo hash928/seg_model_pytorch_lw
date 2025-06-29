@@ -3,5 +3,7 @@ save/
 save1/
 seg_models/pth/
 seg_models/test_output/
+test_results/
+checkpoints/
 # Python 缓存
 __pycache__/      
