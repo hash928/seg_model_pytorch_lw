@@ -550,7 +550,7 @@ def main(args):
             print(f'\n保存最佳模型，IoU: {best_val_iou:.4f}')
         
         # 定期保存检查点
-        if (epoch+1) % 5 == 0 or (epoch+1) == args.epoch:
+        if (epoch+1) % 20 == 0 or (epoch+1) == args.epoch:
             model_name = f'sam2-{epoch+1}.pth'
             torch.save(predictor.model.state_dict(), 
                     os.path.join(args.save_path, model_name))

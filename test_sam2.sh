@@ -6,8 +6,8 @@
 python test_sam2.py \
     --model_path "./checkpoints/sam2_training/sam2-best.pth" \
     --model_cfg "sam2_configs/sam2_hiera_l.yaml" \
-    --test_image_path "/home/data/sam-unet/xiangdao_data4/Test_Images/" \
-    --test_mask_path "/home/data/sam-unet/xiangdao_data4/Test_Labels/" \
+    --test_image_path "/home/data/sam-unet/xiangdao_data5/Test_Images/" \
+    --test_mask_path "/home/data/sam-unet/xiangdao_data5/Test_Labels/" \
     --save_path "./test_results" \
     --visualize
 

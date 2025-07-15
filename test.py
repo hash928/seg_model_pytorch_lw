@@ -8,6 +8,7 @@ from models.SAM2UNet import SAM2UNet
 from models.UNet import UNet
 from models.FCN import FCN
 from models.UNetPlusPlus import UNetPlusPlus, UNetPlus
+from models.LSTMUNet import LSTMUNet
 from tqdm import tqdm
 import numpy as np
 import cv2
@@ -55,8 +56,8 @@ def parse_shell_args(shell_file='test.sh'):
 
 parser = argparse.ArgumentParser("Model Testing")
 parser.add_argument("--model_type", type=str, default="sam2unet", 
-                    choices=["sam2unet", "unet", "fcn", "unetplusplus", "unetplus"],
-                    help="选择模型类型: sam2unet, unet, fcn, unetplusplus 或 unetplus")
+                    choices=["sam2unet", "unet", "fcn", "unetplusplus", "unetplus", "lstmunet", "sam2"],
+                    help="选择模型类型: sam2unet, unet, fcn, unetplusplus, unetplus, lstmunet 或 sam2")
 parser.add_argument("--deep_supervision", action="store_true",
                     help="是否使用深度监督（仅当model_type为unetplusplus时有效）")
 parser.add_argument("--test_image_path", type=str, required=True, 
@@ -70,6 +71,8 @@ parser.add_argument("--save_path", type=str, required=True,
 parser.add_argument("--batch_size", default=12, type=int)
 parser.add_argument("--backbone", type=str, default="resnet50", choices=["resnet50", "resnet34"],
                     help="FCN模型的backbone (仅当model_type为fcn时需要)")
+parser.add_argument("--hiera_path", type=str,
+                    help="path to the sam2 pretrained hiera (仅当model_type为sam2unet或sam2时需要)")
 
 # 首先尝试从shell脚本读取参数
 shell_args = parse_shell_args()
@@ -192,13 +195,20 @@ def main(args):
     
     # 根据模型类型创建模型
     if args.model_type == "sam2unet":
-        model = SAM2UNet()
+        if not args.hiera_path:
+            raise ValueError("使用SAM2-UNet模型时必须提供hiera_path参数")
+        model = SAM2UNet(args.hiera_path)
+    elif args.model_type == "sam2":
+        if not args.hiera_path:
+            raise ValueError("使用SAM2模型时必须提供hiera_path参数")
     elif args.model_type == "unet":
         model = UNet(n_channels=3, n_classes=1)
     elif args.model_type == "unetplusplus":
         model = UNetPlusPlus(n_channels=3, n_classes=1, deep_supervision=args.deep_supervision)
     elif args.model_type == "unetplus":
         model = UNetPlus(n_channels=3, n_classes=1)
+    elif args.model_type == "lstmunet":
+        model = LSTMUNet(n_channels=3, n_classes=1)
     else:  # fcn
         model = FCN(n_channels=3, n_classes=1, backbone=args.backbone)
     

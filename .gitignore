@@ -1,6 +1,7 @@
 # 结果和模型检查点保存
 save/ 
 save1/
+save2/
 seg_models/pth/
 seg_models/test_output/
 test_results/
