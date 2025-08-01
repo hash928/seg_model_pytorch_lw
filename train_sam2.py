@@ -20,12 +20,11 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 import logging
 import re
 import sys
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 # 导入dataset.py中的FullDataset
 from dataset import FullDataset

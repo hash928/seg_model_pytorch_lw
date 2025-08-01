@@ -6,6 +6,7 @@ from PIL import Image
 from torchvision.transforms import InterpolationMode
 from torch.utils.data import Dataset
 from torchvision import transforms
+import torch
 
 
 class ToTensor(object):
@@ -68,6 +69,8 @@ class FullDataset(Dataset):
         self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.png')]
         self.images = sorted(self.images)
         self.gts = sorted(self.gts)
+        self.size = size
+        
         if mode == 'train':
             self.transform = transforms.Compose([
                 Resize((size, size)),
@@ -84,11 +87,29 @@ class FullDataset(Dataset):
             ])
 
     def __getitem__(self, idx):
-        image = self.rgb_loader(self.images[idx])
-        label = self.binary_loader(self.gts[idx])
-        data = {'image': image, 'label': label}
-        data = self.transform(data)
-        return data
+        try:
+            image = self.rgb_loader(self.images[idx])
+            label = self.binary_loader(self.gts[idx])
+            
+            # 确保图像和标签都被调整到正确的尺寸
+            data = {'image': image, 'label': label}
+            data = self.transform(data)
+            
+            # 验证输出尺寸
+            if data['image'].shape[-2:] != (self.size, self.size):
+                print(f"警告：图像 {self.images[idx]} 尺寸不正确: {data['image'].shape}")
+                
+            if data['label'].shape[-2:] != (self.size, self.size):
+                print(f"警告：标签 {self.gts[idx]} 尺寸不正确: {data['label'].shape}")
+                
+            return data
+            
+        except Exception as e:
+            print(f"加载数据时出错 {self.images[idx]}: {str(e)}")
+            # 返回一个默认的空数据
+            empty_image = torch.zeros(3, self.size, self.size)
+            empty_label = torch.zeros(1, self.size, self.size)
+            return {'image': empty_image, 'label': empty_label}
 
     def __len__(self):
         return len(self.images)

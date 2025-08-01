@@ -382,12 +382,12 @@ def main(args):
             train_dice += dice
             num_train_batches += 1
 
-            if i % 50 == 0:
-                progress_bar.set_postfix({
-                    'loss': f'{loss.item():.4f}',
-                    'iou': f'{iou:.4f}',
-                    'dice': f'{dice:.4f}'
-                })
+            # 实时更新进度条，每个批次都更新
+            progress_bar.set_postfix({
+                'loss': f'{loss.item():.4f}',
+                'iou': f'{iou:.4f}',
+                'dice': f'{dice:.4f}'
+            })
 
         avg_train_loss = train_loss / num_train_batches
         avg_train_iou = train_iou / num_train_batches
