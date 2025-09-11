@@ -76,11 +76,9 @@ class TestDataset(Dataset):
 def test():
     """执行模型测试。"""
     # ----- 用户配置 -----
-    # 请将此路径修改为您的测试图片所在目录
-    test_img_dir = '/home/data/sam-unet/xiangdao_data4/Test_Images/'
-    # 请将此路径修改为您的测试掩码所在目录
-    test_mask_dir = '/home/data/sam-unet/xiangdao_data4/Test_Labels/' 
-    model_path = "seg_models/pth/best/unet_best.pth"
+    test_img_dir = '/home/data/sam-unet/shi_ce/xiangdao_data8/Test_Images/'
+    test_mask_dir = '/home/data/sam-unet/shi_ce/xiangdao_data8/Test_Labels/' 
+    model_path = "seg_models/pth/unet_best.pth"
     output_dir = "seg_models/test_output/"
     # -------------------
 
@@ -90,7 +88,7 @@ def test():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 加载模型
-    model = smp.Unet(encoder_name="resnet34", encoder_weights=None, activation="sigmoid", in_channels=3, classes=1)
+    model = smp.Unet(encoder_name="mobileone_s0", encoder_weights=None, activation="sigmoid", in_channels=3, classes=1)
     model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model = model.to(device)
     model.eval()

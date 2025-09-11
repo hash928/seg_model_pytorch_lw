@@ -15,6 +15,7 @@ import csv
 from datetime import datetime
 import re
 import sys
+import style.logo
 
 def structure_loss(pred, mask):
     """结构损失函数，兼容3D/4D输入"""

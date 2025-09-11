@@ -14,6 +14,7 @@ import numpy as np
 import cv2
 import re
 import sys
+import style.logo
 
 def parse_shell_args(shell_file='test.sh'):
     """从shell脚本中解析参数"""

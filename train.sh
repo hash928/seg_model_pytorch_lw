@@ -5,17 +5,17 @@ export CUDA_VISIBLE_DEVICES="0"
 
 # 运行训练脚本
 python train.py \
-    --train_image_path "/home/data/sam-unet/xiangdao_data6/Training_Images/" \
-    --train_mask_path "/home/data/sam-unet/xiangdao_data6/Training_Labels/" \
-    --val_image_path "/home/data/sam-unet/xiangdao_data6/Validation_Images/" \
-    --val_mask_path "/home/data/sam-unet/xiangdao_data6/Validation_Labels/" \
-    --save_path "checkpoints/sam2unet/" \
-    --epoch "20" \
-    --lr "0.001" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data8/Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data8/Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data8/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data8/Validation_Labels/" \
+    --save_path "checkpoints/unet/" \
+    --epoch "200" \
+    --lr "0.0001" \
     --batch_size "4" \
-    --model_type "sam2unet" \
+    --model_type "unet" \
     --num_workers "4" \
-    --hiera_path "/home/SAM2-UNet/sam2_hiera_large.pt" \
+    # --hiera_path "/home/SAM2-UNet/sam2_hiera_large.pt" \
 
 
 

@@ -23,8 +23,8 @@ export CUDA_VISIBLE_DEVICES="0"
 # 示例1：测试UNet+模型
 python test.py \
     --checkpoint "checkpoints/sam2unet/sam2unet-best.pth" \
-    --test_image_path "/home/data/sam-unet/xiangdao_data6/Test_Images/" \
-    --test_mask_path "/home/data/sam-unet/xiangdao_data6/Test_Labels/" \
+    --test_image_path "/home/data/sam-unet/xiangdao_data7/Test_Images/" \
+    --test_mask_path "/home/data/sam-unet/xiangdao_data7/Test_Labels/" \
     --save_path "checkpoints/sam2unet/test_jie_guo1/" \
     --model_type "sam2unet" \
     --hiera_path "/home/SAM2-UNet/sam2_hiera_large.pt"

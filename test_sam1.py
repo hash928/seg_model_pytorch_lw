@@ -15,7 +15,7 @@ from datetime import datetime
 import random
 import re
 import sys
-
+import style.logo
 # 设置CUDA设备
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -199,8 +199,8 @@ def test_single_image(predictor, image, mask, input_point, device, save_path=Non
             
         input_labels = np.array([1], dtype=np.int32)
         
-        print(f"样本 {sample_idx}: 输入点形状: {input_points.shape}, 标签形状: {input_labels.shape}")
-        print(f"样本 {sample_idx}: 输入点内容: {input_points}, 标签内容: {input_labels}")
+        # print(f"样本 {sample_idx}: 输入点形状: {input_points.shape}, 标签形状: {input_labels.shape}")
+        # print(f"样本 {sample_idx}: 输入点内容: {input_points}, 标签内容: {input_labels}")
         
         # 预测掩码
         try:
@@ -209,16 +209,16 @@ def test_single_image(predictor, image, mask, input_point, device, save_path=Non
                 point_labels=input_labels,
                 multimask_output=False,
             )
-            print(f"样本 {sample_idx}: 预测成功，masks形状: {masks.shape}")
+            # print(f"样本 {sample_idx}: 预测成功，masks形状: {masks.shape}")
         except Exception as predict_error:
-            print(f"样本 {sample_idx}: 预测失败: {str(predict_error)}")
+            # print(f"样本 {sample_idx}: 预测失败: {str(predict_error)}")
             return None
         
         # 获取预测结果
         pred_mask = masks[0]  # 取第一个掩码
         
         # 调试信息：打印原始形状
-        print(f"样本 {sample_idx}: 原始pred_mask形状: {pred_mask.shape}, mask形状: {mask.shape}")
+        # print(f"样本 {sample_idx}: 原始pred_mask形状: {pred_mask.shape}, mask形状: {mask.shape}")
         
         # 更安全的维度处理 - 直接取最后两个维度
         if len(pred_mask.shape) > 2:
@@ -229,13 +229,13 @@ def test_single_image(predictor, image, mask, input_point, device, save_path=Non
             # 如果是多维，取最后两个维度
             mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])[0]
         
-        print(f"样本 {sample_idx}: 处理后pred_mask形状: {pred_mask.shape}, mask形状: {mask.shape}")
+        # print(f"样本 {sample_idx}: 处理后pred_mask形状: {pred_mask.shape}, mask形状: {mask.shape}")
         
         # 转换为张量
         gt_mask = torch.tensor(mask.astype(np.float32)).to(device)
         pred_tensor = torch.tensor(pred_mask.astype(np.float32)).to(device)
         
-        print(f"样本 {sample_idx}: 最终gt_mask形状: {gt_mask.shape}, pred_tensor形状: {pred_tensor.shape}")
+        # print(f"样本 {sample_idx}: 最终gt_mask形状: {gt_mask.shape}, pred_tensor形状: {pred_tensor.shape}")
         
         # 计算指标
         iou, dice = calculate_metrics(pred_tensor, gt_mask)
@@ -361,7 +361,7 @@ def batch_test(predictor, test_dataset, device, args):
     total_dice = 0
     valid_samples = 0
     
-    progress_bar = tqdm(range(num_samples), desc='Testing', unit='sample')
+    progress_bar = tqdm(range(num_samples), desc='Testing', unit='sample', ncols=150)
     
     for i in progress_bar:
         try:
@@ -435,7 +435,7 @@ def main(args):
         
         # 加载训练好的权重
         print(f"正在加载训练好的权重: {args.model_path}")
-        state_dict = torch.load(args.model_path, map_location=device)
+        state_dict = torch.load(args.model_path, map_location=device, weights_only=True)
         sam.load_state_dict(state_dict)
         sam.to(device)
         

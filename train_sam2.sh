@@ -6,14 +6,14 @@
 python train_sam2.py \
     --sam2_checkpoint "/home/SAM2-UNet/sam2_hiera_large.pt" \
     --model_cfg "sam2_hiera_l.yaml" \
-    --train_image_path "/home/data/sam-unet/xiangdao_data6/Training_Images/" \
-    --train_mask_path "/home/data/sam-unet/xiangdao_data6/Training_Labels/" \
-    --val_image_path "/home/data/sam-unet/xiangdao_data6/Validation_Images/" \
-    --val_mask_path "/home/data/sam-unet/xiangdao_data6/Validation_Labels/" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data8/Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data8/Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data8/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data8/Validation_Labels/" \
     --save_path "./checkpoints/sam2_training" \
-    --epoch "20" \
+    --epoch "200" \
     --lr "1e-5" \
-    --batch_size "4" \
+    --batch_size "8" \
     --weight_decay "4e-5" \
     --num_workers "3"
 

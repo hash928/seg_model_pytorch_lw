@@ -87,10 +87,10 @@ def dice_coef(outputs: torch.Tensor, labels: torch.Tensor, threshold=0.5, eps=1e
     return dice.item()
 
 # 路径
-train_img_dir = '/home/data/sam-unet/xiangdao_data4/Training_Images/'
-train_mask_dir = '/home/data/sam-unet/xiangdao_data4/Training_Labels/'
-val_img_dir = '/home/data/sam-unet/xiangdao_data4/Validation_Images/'
-val_mask_dir = '/home/data/sam-unet/xiangdao_data4/Validation_Labels/'
+train_img_dir = '/home/data/sam-unet/shi_ce/xiangdao_data8/Training_Images/'
+train_mask_dir = '/home/data/sam-unet/shi_ce/xiangdao_data8/Training_Labels/'
+val_img_dir = '/home/data/sam-unet/shi_ce/xiangdao_data8/Validation_Images/'
+val_mask_dir = '/home/data/sam-unet/shi_ce/xiangdao_data8/Validation_Labels/'
 
 # 数据集和加载器
 train_dataset = SegDataset(train_img_dir, train_mask_dir, augmentation=get_training_augmentation())
@@ -99,7 +99,7 @@ train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers
 val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=2)
 
 # 模型
-model = smp.Unet(encoder_name="resnet34", encoder_weights="imagenet", in_channels=3, classes=1)
+model = smp.Unet(encoder_name="mobileone_s0", encoder_weights=None, in_channels=3, classes=1)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 
@@ -109,7 +109,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 iou_metric = BinaryJaccardIndex(threshold=0.5).to(device)
 
 # 训练与验证
-num_epochs = 200
+num_epochs = 100
 for epoch in range(num_epochs):
     print(f"\n{'='*50}")
     print(f"Epoch {epoch+1}/{num_epochs}")
@@ -190,4 +190,5 @@ for epoch in range(num_epochs):
     print(f"Val Loss: {avg_val_loss:.4f} | Val IoU: {avg_val_iou:.4f} | Val Dice: {avg_val_dice:.4f}")
 
 # 保存模型
-torch.save(model.state_dict(), "seg_models/pth/best/unet_best.pth")
+os.makedirs("seg_models/pth", exist_ok=True)
+torch.save(model.state_dict(), "seg_models/pth/unet_best.pth")

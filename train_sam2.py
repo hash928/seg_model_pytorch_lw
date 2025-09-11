@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Train/Fine Tune SAM 2 on LabPics 1 dataset
 # This mode use several images in a single batch
-# Labpics can be downloaded from: https://zenodo.org/records/3697452/files/LabPicsV1.zip?download=1
 
 import os
 import argparse
@@ -20,6 +19,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 import logging
 import re
 import sys
+import style.logo
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 

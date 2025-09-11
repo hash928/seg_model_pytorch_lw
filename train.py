@@ -21,6 +21,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 import logging
 import re
 import sys
+import style.logo
 
 def parse_shell_args(shell_file='train.sh'):
     """从shell脚本中解析参数"""
@@ -117,14 +118,41 @@ if shell_args:
 args = parser.parse_args()
 
 def structure_loss(pred, mask):
+    # 添加数值稳定性检查
+    if torch.isnan(pred).any() or torch.isinf(pred).any():
+        print("警告: 预测值包含NaN或Inf")
+        return torch.tensor(0.0, device=pred.device, requires_grad=True)
+    
+    if torch.isnan(mask).any() or torch.isinf(mask).any():
+        print("警告: 标签值包含NaN或Inf")
+        return torch.tensor(0.0, device=pred.device, requires_grad=True)
+    
     weit = 1 + 5*torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
     wbce = F.binary_cross_entropy_with_logits(pred, mask, reduction='none')
-    wbce = (weit*wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+    
+    # 添加数值稳定性检查
+    weit_sum = weit.sum(dim=(2, 3))
+    weit_sum = torch.clamp(weit_sum, min=1e-8)  # 防止除零
+    wbce = (weit*wbce).sum(dim=(2, 3)) / weit_sum
+    
     pred = torch.sigmoid(pred)
     inter = ((pred * mask)*weit).sum(dim=(2, 3))
     union = ((pred + mask)*weit).sum(dim=(2, 3))
-    wiou = 1 - (inter + 1)/(union - inter+1)
-    return (wbce + wiou).mean()
+    
+    # 改进IoU计算的数值稳定性
+    union_minus_inter = torch.clamp(union - inter, min=1e-8)
+    wiou = 1 - (inter + 1)/(union_minus_inter + 1)
+    
+    # 确保损失值在合理范围内
+    loss = (wbce + wiou).mean()
+    loss = torch.clamp(loss, min=0.0, max=10.0)  # 限制损失值范围
+    
+    # 最终NaN检查
+    if torch.isnan(loss) or torch.isinf(loss):
+        print("警告: 损失值为NaN或Inf，返回默认值")
+        return torch.tensor(1.0, device=pred.device, requires_grad=True)
+    
+    return loss
 
 def calculate_metrics(pred, mask):
     pred = (pred > 0.5).float()
@@ -313,8 +341,14 @@ def main(args):
         raise ValueError("没有可训练的参数！请检查模型结构或冻结设置。")
     
     print(f"\n可训练参数数量: {len(trainable_params)}")
-    optim = opt.AdamW(trainable_params, lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = CosineAnnealingLR(optim, args.epoch, eta_min=1.0e-7)
+    
+    # 使用更保守的学习率和优化器设置
+    initial_lr = min(args.lr, 0.0001)  # 限制最大学习率
+    optim = opt.AdamW(trainable_params, lr=initial_lr, weight_decay=args.weight_decay, eps=1e-8)
+    
+    # 使用更温和的学习率调度
+    # 这里使用的是余弦退火（Cosine Annealing）学习率调度机制
+    scheduler = CosineAnnealingLR(optim, args.epoch, eta_min=1.0e-8)
     os.makedirs(args.save_path, exist_ok=True)
 
     # 创建CSV文件记录训练指标
@@ -326,6 +360,9 @@ def main(args):
 
     best_val_loss = float('inf')
     best_val_iou = 0
+    patience = 10  # 早停耐心值
+    patience_counter = 0
+    min_improvement = 1e-4  # 最小改进阈值
     
     for epoch in range(args.epoch):
         print(f"\n{'='*50}")
@@ -353,6 +390,15 @@ def main(args):
         for i, batch in progress_bar:
             x = batch['image'].to(device)
             target = batch['label'].to(device)
+            
+            # 检查输入数据
+            if torch.isnan(x).any() or torch.isinf(x).any():
+                print(f"警告: 批次 {i} 输入数据包含NaN或Inf，跳过")
+                continue
+            if torch.isnan(target).any() or torch.isinf(target).any():
+                print(f"警告: 批次 {i} 标签数据包含NaN或Inf，跳过")
+                continue
+            
             optim.zero_grad()
             
             if args.model_type == "sam2unet":
@@ -370,7 +416,28 @@ def main(args):
                 pred = model(x)
                 loss = structure_loss(pred, target)
             
+            # 检查损失值
+            if torch.isnan(loss) or torch.isinf(loss):
+                print(f"警告: 批次 {i} 损失值为NaN或Inf，跳过反向传播")
+                continue
+            
             loss.backward()
+            
+            # 添加梯度裁剪
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
+            # 检查梯度
+            grad_norm = 0
+            for param in model.parameters():
+                if param.grad is not None:
+                    grad_norm += param.grad.data.norm(2).item() ** 2
+            grad_norm = grad_norm ** 0.5
+            
+            if grad_norm > 10.0:  # 梯度过大
+                print(f"警告: 批次 {i} 梯度范数过大: {grad_norm:.4f}")
+                # 可以选择跳过这次更新或者进一步裁剪
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
+            
             optim.step()
 
             # 计算训练指标
@@ -386,7 +453,8 @@ def main(args):
             progress_bar.set_postfix({
                 'loss': f'{loss.item():.4f}',
                 'iou': f'{iou:.4f}',
-                'dice': f'{dice:.4f}'
+                'dice': f'{dice:.4f}',
+                'grad_norm': f'{grad_norm:.4f}'
             })
 
         avg_train_loss = train_loss / num_train_batches
@@ -430,19 +498,33 @@ def main(args):
         csv_file.flush()  # 确保数据写入文件
         
         # 保存最佳模型
-        if val_iou > best_val_iou:
+        if val_iou > best_val_iou + min_improvement:
             best_val_iou = val_iou
+            patience_counter = 0  # 重置耐心计数器
             model_name = f'{args.model_type}-best.pth'
             torch.save(model.state_dict(), 
                       os.path.join(args.save_path, model_name))
             print(f'\n保存最佳模型，IoU: {best_val_iou:.4f}')
+        else:
+            patience_counter += 1
+            print(f'\n验证IoU未改善，耐心计数器: {patience_counter}/{patience}')
         
-        # 定期保存检查点
-        if (epoch+1) % 20 == 0 or (epoch+1) == args.epoch:
-            model_name = f'{args.model_type}-{epoch+1}.pth'
-            torch.save(model.state_dict(), 
-                      os.path.join(args.save_path, model_name))
-            print(f'保存检查点: {model_name}')
+        # 早停检查
+        if patience_counter >= patience:
+            print(f'\n验证IoU连续{patience}个epoch未改善，触发早停')
+            break
+        
+        # 检查损失是否异常
+        if torch.isnan(torch.tensor(avg_train_loss)) or avg_train_loss > 100:
+            print(f'\n训练损失异常: {avg_train_loss}，停止训练')
+            break
+        
+        # 只保存最后一轮的检查点
+        if (epoch + 1) == args.epoch:
+            model_name = f'{args.model_type}-last.pth'
+            torch.save(model.state_dict(),
+                       os.path.join(args.save_path, model_name))
+            print(f'保存最后一轮检查点: {model_name}')
     
     csv_file.close()
     print(f'\n训练指标已保存到: {csv_path}')

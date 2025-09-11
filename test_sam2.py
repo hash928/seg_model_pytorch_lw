@@ -15,6 +15,7 @@ from datetime import datetime
 import random
 import re
 import sys
+import style.logo
 
 # 设置CUDA设备
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -322,7 +323,7 @@ def batch_test(predictor, test_dataset, device, args):
     total_dice = 0
     valid_samples = 0
     
-    progress_bar = tqdm(range(num_samples), desc='Testing', unit='sample')
+    progress_bar = tqdm(range(num_samples), desc='Testing', unit='sample', ncols=150)
     
     for i in progress_bar:
         try:

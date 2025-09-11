@@ -16,3 +16,4 @@ python train_sam1.py \
     
 # 可选参数:
 # --freeze_backbone
+# --weight_decay "4e-5" # 权重衰减参数，用于控制L2正则化强度，防止模型过拟合
