@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
-
+from module.ASPP import ASPP
+from module.SE import SE_Block
 
 def unet_conv(in_channels, out_channels, padding=1):
     """
@@ -45,7 +46,7 @@ class _UNetEncoder(nn.Module):
 
 
 class _UNetDecoder(nn.Module):
-    def __init__(self, encode_out_channels, n_class):
+    def __init__(self, encode_out_channels, n_class, use_aspp=False, use_se=False):
         """
         decoder部分。
         decode block比encode block少一个。
@@ -54,12 +55,26 @@ class _UNetDecoder(nn.Module):
         最后，增加一个1x1卷积，用于最后的分类。
         :param encode_out_channels: 列表类型，每个encode block的输出channels，按照encode block的顺序。
         :param n_class: n种分类。
+        :param use_aspp: 是否使用ASPP模块。
+        :param use_se: 是否使用SE模块。
         """
         super(_UNetDecoder, self).__init__()
+        self.use_aspp = use_aspp
+        self.use_se = use_se
         self.ups = nn.ModuleList()  # 上采样
         self.decodes = nn.ModuleList()  # decode
 
         in_channels = encode_out_channels[-1]  # 最后一个encode block的输出channels作为decode的输入channels
+        
+        # 如果使用ASPP，在bottleneck处添加ASPP模块
+        if use_aspp:
+            self.aspp = ASPP(in_channels, [6, 12, 18], 256)
+            in_channels = 256  # ASPP输出256个通道
+        
+        # 如果使用SE模块，在bottleneck处添加SE模块
+        if use_se:
+            self.se = SE_Block(in_channels, ratio=16)
+        
         for cat_channels in reversed(encode_out_channels[:-1]):  # decode与encode顺序相反，遍历所有剩余的encode block的输出channels
             out_channels = in_channels // 2  # 上采样输出channels是输入channels的一半,spatial增大一倍
             self.ups.append(
@@ -76,6 +91,14 @@ class _UNetDecoder(nn.Module):
         pass
 
     def forward(self, x, shortcuts):
+        # 如果使用ASPP，在bottleneck处应用ASPP
+        if self.use_aspp:
+            x = self.aspp(x)
+        
+        # 如果使用SE模块，在bottleneck处应用SE模块
+        if self.use_se:
+            x = self.se(x)
+            
         for i, (up, decode) in enumerate(zip(self.ups, self.decodes)):
             x = up(x)  # 先上采样
             x, s = self._crop(x, shortcuts[-i - 1])  # 剪裁大小，因为下采样上采样等会使x和shortcut的spatial大小不一致
@@ -106,7 +129,7 @@ class _UNetDecoder(nn.Module):
 
 class _UNetFactory(nn.Module):
     def __init__(self, encode_blocks, encode_out_channels, n_class,
-                 init_encoder=True, init_decoder=True):
+                 init_encoder=True, init_decoder=True, use_aspp=False, use_se=False):
         """
         UNet工厂类，用于生成UNet模型的网络。
         :param encode_blocks: 列表类型。列表每个元素是一个encode的block
@@ -114,10 +137,12 @@ class _UNetFactory(nn.Module):
         :param n_class: n种分类。
         :param init_encoder: 是否初始化encoder的权重。ResNet修改了encoder部分，一般不需要初始化。
         :param init_decoder: 是否初始化decoder的权重。decoder一般一样，都需要初始化。
+        :param use_aspp: 是否使用ASPP模块。
+        :param use_se: 是否使用SE模块。
         """
         super(_UNetFactory, self).__init__()
         self.encoder = _UNetEncoder(encode_blocks)
-        self.decoder = _UNetDecoder(encode_out_channels, n_class)
+        self.decoder = _UNetDecoder(encode_out_channels, n_class, use_aspp, use_se)
 
         # 初始化参数
         if init_encoder:
@@ -144,11 +169,13 @@ class _UNetFactory(nn.Module):
     pass
 
 
-def unet_base(in_channels, n_class):
+def unet_base(in_channels, n_class, use_aspp=False, use_se=False):
     """
     按照论文实现的unet网络，与论文不同的是使用了same卷积。
     :param in_channels: 输入channels，也就是image的channels
     :param n_class: n种分类
+    :param use_aspp: 是否使用ASPP模块
+    :param use_se: 是否使用SE模块
     :return: unet网络
     """
     encode_blocks = [unet_conv(in_channels, 64)]
@@ -156,15 +183,18 @@ def unet_base(in_channels, n_class):
         encode_blocks.append(nn.Sequential(nn.MaxPool2d(2, stride=2, ceil_mode=True),
                                            unet_conv(64 * 2 ** i, 128 * 2 ** i)))
     encode_out_channels = [64, 128, 256, 512, 1024]
-    return _UNetFactory(encode_blocks, encode_out_channels, n_class)
+    return _UNetFactory(encode_blocks, encode_out_channels, n_class, use_aspp=use_aspp, use_se=use_se)
 
 
-def unet_resnet(resnet_type, in_channels, n_class, pretrained=True):
+def unet_resnet(resnet_type, in_channels, n_class, pretrained=True, use_aspp=False, use_se=False):
     """
     用resnet预训练模型作为encoder实现的unet网络。
     :param resnet_type: resnet类型。可以是resnet18/34/50/101/152
     :param in_channels: 输入channels，也就是image的channels
     :param n_class: n种分类
+    :param pretrained: 是否使用预训练权重
+    :param use_aspp: 是否使用ASPP模块
+    :param use_se: 是否使用SE模块
     :return: 使用resnet作为backbone的unet网络
     """
     if resnet_type == 'resnet18':
@@ -191,7 +221,7 @@ def unet_resnet(resnet_type, in_channels, n_class, pretrained=True):
                      resnet.layer3,  # 16x，resnet的conv4_x进行第4次下采样
                      resnet.layer4]  # 32x，resnet的conv5_x进行第5次下采样
     return _UNetFactory(encode_blocks, encode_out_channels, n_class,
-                        init_encoder=not pretrained)  # 有pretrain的encoder不初始化
+                        init_encoder=not pretrained, use_aspp=use_aspp, use_se=use_se)  # 有pretrain的encoder不初始化
 
 
 if __name__ == '__main__':
