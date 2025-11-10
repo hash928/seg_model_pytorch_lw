@@ -226,9 +226,10 @@ def unet_resnet(resnet_type, in_channels, n_class, pretrained=True, use_aspp=Fal
 
 if __name__ == '__main__':
     """单元测试"""
-    dev = torch.device('cuda:6')
-    model = unet_resnet('resnet18', 3, 8)  # resnet18作为backbone的unet
+    dev = torch.device('cuda:0')
+    model = unet_resnet('resnet18', 3, 2, use_aspp=True, use_se=True)  # resnet18作为backbone的unet
     model.to(dev)  # 装入gpu
+    model.eval()
     print(model)  # 打印看模型是否正确
 
     in_data = torch.randint(0, 256, (1, 3, 572, 572), dtype=torch.float)  # 测试输入
@@ -236,5 +237,5 @@ if __name__ == '__main__':
     print(in_data.shape)
 
     out_data = model(in_data)
-    print(out_data.shape)  # 输出应该是1x8x572x572的tensor
+    print(out_data.shape)  # 输出应该是1x2x572x572的tensor
     pass

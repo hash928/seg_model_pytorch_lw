@@ -10,18 +10,17 @@ from tqdm import tqdm
 import csv
 from datetime import datetime
 
-from utils import bce_dice_loss, calculate_metrics
+from utils import bce_dice_loss, calculate_metrics, focal_loss, dice_loss, bce_loss
 from model_utils import create_model, print_model_structure, freeze_backbone
-from utils.tensorboard_logger import TensorBoardLogger
 
 class UNetTrainer:
     """UNet训练器类"""
     
-    def __init__(self, args, train_dataset, val_dataset):
+    def __init__(self, args, train_dataset, val_dataset, generator=None, worker_init_fn=None):
         self.args = args
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"使用设备: {self.device}")
-
+        
         # 创建数据加载器
         self.train_loader = DataLoader(
             train_dataset, 
@@ -29,7 +28,9 @@ class UNetTrainer:
             shuffle=True, 
             num_workers=args.num_workers,
             pin_memory=True,
-            drop_last=True
+            drop_last=True,
+            generator=generator,  # 使用固定的generator确保shuffle可复现
+            worker_init_fn=worker_init_fn  # 为每个worker设置随机种子
         )
         
         self.val_loader = DataLoader(
@@ -38,14 +39,12 @@ class UNetTrainer:
             shuffle=False, 
             num_workers=args.num_workers,
             pin_memory=True,
-            drop_last=False
+            drop_last=False,
+            worker_init_fn=worker_init_fn  # 验证时也使用相同的worker初始化
         )
         
         # 创建模型
         self.model = self._create_model()
-        
-        # 初始化 TensorBoard 记录器
-        self.tb_logger = TensorBoardLogger(args.save_path, self.model, self.device, args.input_size)
         
         # 设置优化器和调度器
         self.optimizer, self.scheduler, self.scaler = self._setup_optimizer()
@@ -66,10 +65,10 @@ class UNetTrainer:
         try:
             # 对于非UNet-ResNet模型，pretrained参数可能不适用
             if 'unet' in self.args.model_type and 'resnet' in self.args.model_type:
-                model = create_model(self.args.model_type, self.args.num_classes, self.args.pretrained, self.args.use_aspp, getattr(self.args, 'use_se', False))
+                model = create_model(self.args.model_type, self.args.num_classes, self.args.pretrained, self.args.use_aspp, self.args.use_se)
             elif 'unet' in self.args.model_type:
                 # UNet base模型
-                model = create_model(self.args.model_type, self.args.num_classes, False, self.args.use_aspp, getattr(self.args, 'use_se', False))
+                model = create_model(self.args.model_type, self.args.num_classes, False, self.args.use_aspp, self.args.use_se)
             else:
                 # FCN8s和DeepLabV3+模型不使用pretrained、ASPP和SE参数
                 model = create_model(self.args.model_type, self.args.num_classes, False, False, False)
@@ -142,7 +141,7 @@ class UNetTrainer:
                     outputs = self.model(images)
                     
                     # 计算损失
-                    loss = bce_dice_loss(outputs, masks)
+                    loss = bce_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)
@@ -198,7 +197,11 @@ class UNetTrainer:
                 with torch.amp.autocast(device_type):
                     # 前向传播
                     outputs = self.model(images)
-                    loss = bce_dice_loss(outputs, masks)
+                    
+                    # 计算损失
+                    loss = bce_loss(outputs, masks)
+                    
+                    # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)
 
                 # 反向传播
@@ -212,9 +215,6 @@ class UNetTrainer:
                 train_dice += dice
                 num_train_batches += 1
 
-                # 记录训练指标到 TensorBoard
-                self.tb_logger.log_training_metrics(loss.item(), iou, dice)
-
                 # 更新进度条
                 progress_bar.set_postfix({
                     'loss': f'{loss.item():.4f}',
@@ -226,11 +226,9 @@ class UNetTrainer:
                 print(f"处理训练批次 {batch_idx} 时出错: {str(e)}")
                 continue
 
-        return (
-            train_loss / num_train_batches if num_train_batches > 0 else 0,
-            train_iou / num_train_batches if num_train_batches > 0 else 0,
-            train_dice / num_train_batches if num_train_batches > 0 else 0
-        )
+        return train_loss / num_train_batches if num_train_batches > 0 else 0, \
+               train_iou / num_train_batches if num_train_batches > 0 else 0, \
+               train_dice / num_train_batches if num_train_batches > 0 else 0
     
     def save_model(self, epoch, val_iou):
         """保存模型"""
@@ -261,9 +259,9 @@ class UNetTrainer:
             # 训练阶段
             avg_train_loss, avg_train_iou, avg_train_dice = self.train_epoch(epoch)
             
-            # 更新学习率（在训练完成后）
-            current_lr = self.scheduler.get_last_lr()[0]
+            # 更新学习率
             self.scheduler.step()
+            current_lr = self.scheduler.get_last_lr()[0]
             
             # 验证阶段
             val_loss, val_iou, val_dice = self.validate()
@@ -279,14 +277,6 @@ class UNetTrainer:
             print(f"Val Dice: {val_dice:.4f}")
             print(f"Learning Rate: {current_lr:.6f}")
             
-            # 记录 epoch 摘要到 TensorBoard
-            self.tb_logger.log_epoch_summary(epoch, avg_train_loss, avg_train_iou, avg_train_dice,
-                                           val_loss, val_iou, val_dice, current_lr)
-            
-            # 记录样本图像（每10个epoch记录一次）
-            if (epoch + 1) % 10 == 0:
-                self.tb_logger.log_sample_images(epoch, self.val_loader)
-            
             # 记录指标到CSV
             self.csv_writer.writerow([epoch+1, avg_train_loss, avg_train_iou, avg_train_dice, 
                             val_loss, val_iou, val_dice, current_lr])
@@ -295,8 +285,7 @@ class UNetTrainer:
             # 保存模型
             self.save_model(epoch, val_iou)
         
-        # 关闭CSV文件和TensorBoard
+        # 关闭CSV文件
         self.csv_file.close()
-        self.tb_logger.close()
         print(f'\n训练指标已保存到: {self.csv_path}')
         print("训练完成！")

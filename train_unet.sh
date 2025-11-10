@@ -9,7 +9,7 @@ python train_unet.py \
     --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data11/Training_Labels/" \
     --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data11/Validation_Images/" \
     --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data11/Validation_Labels/" \
-    --save_path "./checkpoints/unet_resnet34_aspp_se_training_3" \
+    --save_path "./checkpoints/unet_resnet34_aspp_se_bce_loss_training_3" \
     --epoch "200" \
     --lr "1e-4" \
     --batch_size "8" \

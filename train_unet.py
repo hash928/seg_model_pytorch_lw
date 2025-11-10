@@ -4,6 +4,8 @@
 
 import os
 import torch
+import random
+import numpy as np
 from torch.utils.data import DataLoader
 
 # 导入模块化组件
@@ -13,11 +15,51 @@ from dataset import FullDataset
 
 # 设置CUDA设备
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+if torch.cuda.is_available():
+    device = torch.device("cuda:0")
+    print("✅ 检测到 GPU，可使用 CUDA 进行加速。")
+else:
+    device = torch.device("cpu")
+    print("⚠️ 未检测到 GPU，使用 CPU 进行训练。")
+
+
+def set_random_seed(seed):
+    """设置随机种子"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # 确保 CUDA 操作是可复现的
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def get_worker_init_fn(seed):
+    """返回worker初始化函数，为每个worker进程设置随机种子"""
+    def worker_init_fn(worker_id):
+        # 每个worker使用不同的种子，但基于主种子
+        # 这样既保证了可复现性，又让不同worker有不同的随机序列
+        worker_seed = (seed + worker_id) % (2**32)
+        random.seed(worker_seed)
+        np.random.seed(worker_seed)
+        torch.manual_seed(worker_seed)
+    return worker_init_fn
 
 def main():
     """主函数"""
-    # 解析参数
+
+    # 解析参数（需要在设置随机种子之前，因为可能从shell脚本读取参数）
     args = parse_args()
+    
+    # 设置随机种子（在创建数据集之前设置）
+    seed = 42  # 可以根据需要更改种子值
+    set_random_seed(seed)
+    
+    # 创建用于DataLoader的generator，确保shuffle的可复现性
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    
+    # 创建worker初始化函数
+    worker_init_fn = get_worker_init_fn(seed)
     
     # 创建训练和验证数据集
     print("正在加载数据集...")
@@ -43,7 +85,7 @@ def main():
         raise
     
     # 创建训练器并开始训练
-    trainer = UNetTrainer(args, train_dataset, val_dataset)
+    trainer = UNetTrainer(args, train_dataset, val_dataset, generator, worker_init_fn)
     trainer.train()
 
 if __name__ == "__main__":

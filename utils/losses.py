@@ -5,31 +5,63 @@ import torch
 import torch.nn.functional as F
 
 def dice_loss(pred, target, smooth=1e-6):
-    """Dice损失函数"""
+    """
+    Dice损失函数
+    """
     pred = torch.sigmoid(pred)
     intersection = (pred * target).sum(dim=(2, 3))
     union = pred.sum(dim=(2, 3)) + target.sum(dim=(2, 3))
     dice = (2.0 * intersection + smooth) / (union + smooth)
     return 1 - dice.mean()
 
+def bce_loss(pred, target, smooth=1e-6):
+    """
+    BCE_logits损失函数，适合处理二分类问题的损失函数
+    BCE损失函数 F.binary_cross_entropy
+    """
+    loss = F.binary_cross_entropy_with_logits(pred, target, reduction='mean')
+    return loss
+
 def bce_dice_loss(pred, target, bce_weight=0.5, dice_weight=0.5):
-    """BCE + Dice组合损失函数"""
+    """
+    BCE + Dice组合损失函数
+    """
     bce = F.binary_cross_entropy_with_logits(pred, target)
     dice = dice_loss(pred, target)
     return bce_weight * bce + dice_weight * dice
 
-def focal_loss(pred, target, alpha=0.25, gamma=2.0):
-    """Focal损失函数，用于处理类别不平衡"""
-    pred = torch.sigmoid(pred)
-    ce_loss = F.binary_cross_entropy(pred, target, reduction='none')
-    p_t = pred * target + (1 - pred) * (1 - target)
-    loss = ce_loss * ((1 - p_t) ** gamma)
+def focal_loss(pred, target, alpha=0.25, gamma=2.0, reduction='mean'):
+    """
+    Focal Loss for binary/multi-label classification
+    pred: logits (not sigmoid)
+    target: same shape as pred (0 or 1)
+    alpha: balance factor between positive/negative
+    gamma: focusing parameter
+    reduction: 'none' | 'mean' | 'sum'
+    """
+    # 1. 计算带logits的 BCE
+    ce_loss = F.binary_cross_entropy_with_logits(pred, target, reduction='none')
     
-    if alpha >= 0:
+    # 2. 计算 p_t
+    p_t = torch.sigmoid(pred) * target + (1 - torch.sigmoid(pred)) * (1 - target)
+    
+    # 3. 调制项 (1 - p_t)^gamma
+    focal_term = (1 - p_t) ** gamma
+    
+    # 4. 计算 alpha 平衡
+    if alpha is not None:
         alpha_t = alpha * target + (1 - alpha) * (1 - target)
-        loss = alpha_t * loss
-    
-    return loss.mean()
+        loss = alpha_t * focal_term * ce_loss
+    else:
+        loss = focal_term * ce_loss
+
+    # 5. reduction
+    if reduction == 'mean':
+        return loss.mean()
+    elif reduction == 'sum':
+        return loss.sum()
+    else:
+        return loss
 
 def structure_loss(pred, mask):
     """结构损失函数，兼容3D/4D输入"""
