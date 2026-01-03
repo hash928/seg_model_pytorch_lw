@@ -4,18 +4,18 @@
 # 使用示例：bash test_unet.sh
 
  python test_unet.py \
-     --model_path "checkpoints/unet_resnet34_aspp_se_bce_loss_training_3/unet_resnet34-best.pth" \
+     --model_path "./checkpoints/unet_resnet34_dice_loss_training_Mosaic_4_seed33/unet_resnet34-best.pth" \
      --model_type "unet_resnet34" \
-     --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data11/Test_Images/" \
-     --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data11/Test_Labels/" \
-     --save_path "./checkpoints/unet_resnet34_aspp_se_bce_loss_training_3/test_results/" \
+     --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data12/Test_Images/" \
+     --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data12/Test_Labels/" \
+     --save_path "./checkpoints/unet_resnet34_dice_loss_training_Mosaic_4_seed33/test_results/" \
      --visualize \
      --input_size "352" \
      --num_classes "1" \
      --batch_size "1" \
      --threshold "0.5" \
-     --use_aspp \
-     --use_se \
+#     --use_aspp \
+#     --use_ca \
 
 
 # 参数说明：

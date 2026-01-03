@@ -47,6 +47,17 @@ def parse_shell_args(shell_file='test_unet.sh'):
                     args_dict['use_aspp'] = True
                 if '--use_se' in line:
                     args_dict['use_se'] = True
+                if '--use_cbam' in line:
+                    args_dict['use_cbam'] = True
+                if '--use_ca' in line:
+                    args_dict['use_ca'] = True
+                if '--use_eca' in line:
+                    args_dict['use_eca'] = True
+                if '--attention_type' in line:
+                    # 提取attention_type的值
+                    match = re.search(r'--attention_type\s+"?(\w+)"?', line)
+                    if match:
+                        args_dict['attention_type'] = match.group(1)
                 
         print("从shell脚本读取的参数：")
         for key, value in args_dict.items():
@@ -87,7 +98,16 @@ def create_parser():
     parser.add_argument("--use_aspp", action="store_true",
                         help="是否使用ASPP模块（仅支持UNet系列模型）")
     parser.add_argument("--use_se", action="store_true",
-                        help="是否使用SE模块（仅支持UNet系列模型）")
+                        help="是否使用SE模块（仅支持UNet系列模型，向后兼容）")
+    parser.add_argument("--use_cbam", action="store_true",
+                        help="是否使用CBAM模块（仅支持UNet系列模型）")
+    parser.add_argument("--use_ca", action="store_true",
+                        help="是否使用CA模块（仅支持UNet系列模型）")
+    parser.add_argument("--use_eca", action="store_true",
+                        help="是否使用ECA模块（仅支持UNet系列模型）")
+    parser.add_argument("--attention_type", type=str, default=None,
+                        choices=["se", "cbam", "ca", "eca"],
+                        help="注意力模块类型（优先级高于--use_*参数）")
     
     return parser
 

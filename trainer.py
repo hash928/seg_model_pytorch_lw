@@ -12,6 +12,7 @@ from datetime import datetime
 
 from utils import bce_dice_loss, calculate_metrics, focal_loss, dice_loss, bce_loss
 from model_utils import create_model, print_model_structure, freeze_backbone
+from utils.tensorboard_logger import TensorBoardLogger
 
 class UNetTrainer:
     """UNet训练器类"""
@@ -49,6 +50,13 @@ class UNetTrainer:
         # 设置优化器和调度器
         self.optimizer, self.scheduler, self.scaler = self._setup_optimizer()
         
+        # 初始化 TensorBoard 记录器
+        try:
+            self.tb_logger = TensorBoardLogger(args.save_path, self.model, self.device, args.input_size)
+        except Exception as e:
+            print(f"初始化 TensorBoardLogger 失败: {str(e)}")
+            self.tb_logger = None
+        
         # 创建保存目录
         os.makedirs(args.save_path, exist_ok=True)
         
@@ -65,10 +73,30 @@ class UNetTrainer:
         try:
             # 对于非UNet-ResNet模型，pretrained参数可能不适用
             if 'unet' in self.args.model_type and 'resnet' in self.args.model_type:
-                model = create_model(self.args.model_type, self.args.num_classes, self.args.pretrained, self.args.use_aspp, self.args.use_se)
+                model = create_model(
+                    self.args.model_type, 
+                    self.args.num_classes, 
+                    self.args.pretrained, 
+                    self.args.use_aspp, 
+                    getattr(self.args, 'use_se', False),
+                    getattr(self.args, 'use_cbam', False),
+                    getattr(self.args, 'use_ca', False),
+                    getattr(self.args, 'use_eca', False),
+                    getattr(self.args, 'attention_type', None)
+                )
             elif 'unet' in self.args.model_type:
                 # UNet base模型
-                model = create_model(self.args.model_type, self.args.num_classes, False, self.args.use_aspp, self.args.use_se)
+                model = create_model(
+                    self.args.model_type, 
+                    self.args.num_classes, 
+                    False, 
+                    self.args.use_aspp, 
+                    getattr(self.args, 'use_se', False),
+                    getattr(self.args, 'use_cbam', False),
+                    getattr(self.args, 'use_ca', False),
+                    getattr(self.args, 'use_eca', False),
+                    getattr(self.args, 'attention_type', None)
+                )
             else:
                 # FCN8s和DeepLabV3+模型不使用pretrained、ASPP和SE参数
                 model = create_model(self.args.model_type, self.args.num_classes, False, False, False)
@@ -141,7 +169,7 @@ class UNetTrainer:
                     outputs = self.model(images)
                     
                     # 计算损失
-                    loss = bce_loss(outputs, masks)
+                    loss = dice_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)
@@ -199,7 +227,7 @@ class UNetTrainer:
                     outputs = self.model(images)
                     
                     # 计算损失
-                    loss = bce_loss(outputs, masks)
+                    loss = dice_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)
@@ -214,6 +242,13 @@ class UNetTrainer:
                 train_iou += iou
                 train_dice += dice
                 num_train_batches += 1
+                
+                # 记录训练过程中的指标到 TensorBoard（按batch）
+                if self.tb_logger is not None:
+                    try:
+                        self.tb_logger.log_training_metrics(loss.item(), iou, dice)
+                    except Exception as e:
+                        print(f"记录训练指标到 TensorBoard 失败: {str(e)}")
 
                 # 更新进度条
                 progress_bar.set_postfix({
@@ -282,10 +317,32 @@ class UNetTrainer:
                             val_loss, val_iou, val_dice, current_lr])
             self.csv_file.flush()  # 确保数据写入文件
             
+            # 记录 epoch 级别的摘要到 TensorBoard
+            if self.tb_logger is not None:
+                try:
+                    self.tb_logger.log_epoch_summary(
+                        epoch,
+                        avg_train_loss, avg_train_iou, avg_train_dice,
+                        val_loss, val_iou, val_dice,
+                        current_lr
+                    )
+                    # 可选：定期记录样本预测
+                    if (epoch + 1) % 5 == 0:
+                        self.tb_logger.log_sample_images(epoch, self.val_loader)
+                except Exception as e:
+                    print(f"记录 TensorBoard Epoch 摘要失败: {str(e)}")
+            
             # 保存模型
             self.save_model(epoch, val_iou)
         
         # 关闭CSV文件
         self.csv_file.close()
+        
+        # 关闭 TensorBoard
+        if self.tb_logger is not None:
+            try:
+                self.tb_logger.close()
+            except Exception as e:
+                print(f"关闭 TensorBoardLogger 失败: {str(e)}")
         print(f'\n训练指标已保存到: {self.csv_path}')
         print("训练完成！")

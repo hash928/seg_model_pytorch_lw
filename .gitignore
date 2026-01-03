@@ -10,3 +10,11 @@ pretrained_models/
 # Python 缓存
 __pycache__/    
 *.pth  
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.webp

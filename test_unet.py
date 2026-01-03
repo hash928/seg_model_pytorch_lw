@@ -13,9 +13,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 def main():
     args = parse_args()
     tester = UNetTester(args)
-    results, avg_iou, avg_dice, valid_samples = tester.test()
-    tester.print_results(results, avg_iou, avg_dice, valid_samples)
-    tester.save_results(results, avg_iou, avg_dice, valid_samples)
+    results, avg_iou, avg_dice, avg_ssim, avg_ms_ssim, valid_samples = tester.test()
+    tester.print_results(results, avg_iou, avg_dice, avg_ssim, avg_ms_ssim, valid_samples)
+    tester.save_results(results, avg_iou, avg_dice, avg_ssim, avg_ms_ssim, valid_samples)
 
 if __name__ == "__main__":
     main()

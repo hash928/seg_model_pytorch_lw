@@ -51,7 +51,7 @@ def main():
     args = parse_args()
     
     # 设置随机种子（在创建数据集之前设置）
-    seed = 42  # 可以根据需要更改种子值
+    seed = 33  # 可以根据需要更改种子值
     set_random_seed(seed)
     
     # 创建用于DataLoader的generator，确保shuffle的可复现性
