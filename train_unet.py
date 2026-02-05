@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# Train UNet on LabPics 1 dataset
-# 基于SAM2训练代码改编的UNet训练脚本 - 模块化版本
 
 import os
 import torch

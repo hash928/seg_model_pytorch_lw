@@ -3,13 +3,14 @@
 # UNet 训练脚本
 # 使用示例：bash train_unet.sh
 
+# 主要运行
 python train_unet.py \
-    --model_type "fcn8s" \
+    --model_type "unet_resnet50" \
     --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data12/aug_Training_Images/" \
     --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data12/aug_Training_Labels/" \
     --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data12/Validation_Images/" \
     --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data12/Validation_Labels/" \
-    --save_path "./checkpoints/fcn8s_dice_loss_training_Mosaic_4_seed33" \
+    --save_path "./checkpoints/unet_resnet50_dice_loss_training_Mosaic_4_seed33" \
     --epoch "200" \
     --lr "1e-4" \
     --batch_size "8" \
@@ -18,8 +19,26 @@ python train_unet.py \
     --input_size "352" \
     --num_classes "1" \
 #    --use_aspp \
-#    --use_eca \
+#    --use_se \
 
+
+#试试
+python train_unet.py \
+    --model_type "unet_resnet34" \
+    --train_image_path "/home/data/sam-unet/shi_ce/data_seg/Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/data_seg/Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/data_seg/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/data_seg/Validation_Labels/" \
+    --save_path "./checkpoints1/unet_resnet34_dice_bce_loss_training_seed33" \
+    --epoch "200" \
+    --lr "1e-4" \
+    --batch_size "8" \
+    --weight_decay "1e-4" \
+    --num_workers "4" \
+    --input_size "352" \
+    --num_classes "1" \
+#    --use_aspp \
+#    --use_se \
 # 可选参数：
 # --freeze_backbone  # 冻结主干网络参数
 # --model_type 可选值: 

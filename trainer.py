@@ -169,7 +169,7 @@ class UNetTrainer:
                     outputs = self.model(images)
                     
                     # 计算损失
-                    loss = dice_loss(outputs, masks)
+                    loss = bce_dice_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)
@@ -227,7 +227,7 @@ class UNetTrainer:
                     outputs = self.model(images)
                     
                     # 计算损失
-                    loss = dice_loss(outputs, masks)
+                    loss = bce_dice_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)

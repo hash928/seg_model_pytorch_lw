@@ -249,7 +249,6 @@ def unet_resnet(resnet_type, in_channels, n_class, pretrained=True, use_aspp=Fal
 
 
 if __name__ == '__main__':
-    """单元测试"""
     dev = torch.device('cuda:0')
     model = unet_resnet('resnet34', 3, 2, use_aspp=True, attention_type="se")  # resnet18作为backbone的unet
     # 注册到 decoder 的 attention
@@ -260,7 +259,7 @@ if __name__ == '__main__':
     model.decoder.decodes[1].register_forward_hook(
         save_feature("decoder_stage1")
     )
-    # 解码器钩子
+    # 编码器钩子
     model.encoder.encoder[4].register_forward_hook(
         save_feature("encoder_layer4")
     )
@@ -277,7 +276,7 @@ if __name__ == '__main__':
     # 先进行前向传播，hook才会被触发并保存特征图
     out_data = model(in_data)
     print(out_data.shape)  # 输出应该是1x2x572x572的tensor
-    
+
     # 前向传播后，特征图已经被保存，可以访问
     if "attention_bottleneck" in feat_maps:
         feat = feat_maps["attention_bottleneck"]
@@ -289,8 +288,8 @@ if __name__ == '__main__':
 
     from PIL import Image
     import torchvision.transforms as T
-    
-    img_path = "/home/data/sam-unet/shi_ce/xiangdao_data12/Training_Images/sanjiao_jz_label_100.png"
+
+    img_path = "/home/data/sam-unet/shi_ce/xiangdao_data12/Training_Images/yuanxing_jz_label_54.png"
     img = Image.open(img_path).convert("RGB")
 
     transform = T.Compose([
@@ -305,7 +304,7 @@ if __name__ == '__main__':
     # 加载权重并处理键名映射和类别数不匹配问题
     checkpoint_path = "/home/seg_model1/checkpoints/unet_resnet34_aspp_se_dice_bce_loss_training_Mosaic_4_seed512/unet_resnet34-200.pth"
     checkpoint = torch.load(checkpoint_path, map_location=dev, weights_only=False)
-    
+
     # 处理键名映射：将 decoder.se.* 映射到 decoder.attention.*
     if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
         state_dict = checkpoint['state_dict']
@@ -313,7 +312,7 @@ if __name__ == '__main__':
         state_dict = checkpoint
     else:
         state_dict = checkpoint
-    
+
     # 创建新的状态字典，处理键名映射
     new_state_dict = {}
     for key, value in state_dict.items():
@@ -327,7 +326,7 @@ if __name__ == '__main__':
             continue
         else:
             new_state_dict[key] = value
-    
+
     # 部分加载权重（strict=False 允许跳过不匹配的键）
     missing_keys, unexpected_keys = model.load_state_dict(new_state_dict, strict=False)
     if missing_keys:
@@ -335,30 +334,28 @@ if __name__ == '__main__':
     if unexpected_keys:
         print(f"警告: 以下键未使用: {unexpected_keys}")
     print("权重加载完成（已跳过分类器层）")
-    
+
     model.eval()
 
     with torch.no_grad():
         _ = model(img_tensor)
 
-    feat = feat_maps["encoder_layer4"]
+    feat = feat_maps["attention_bottleneck"]
 
     heatmap = feat.squeeze(0).mean(dim=0).numpy()
     heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
 
     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(10, 3))
+    # 特征图
+    plt.figure(figsize=(10, 3), facecolor='none', frameon=False)
     plt.imshow(heatmap, cmap="jet", aspect="auto")
-    plt.colorbar(label="Attention response")
-    plt.title("Attention feature heatmap (SE bottleneck)")
-    plt.xlabel("Width")
-    plt.ylabel("Height")
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # 调整子图边距
     plt.show()
 
-    # 显示原始图像
-    plt.figure(figsize=(10, 3))
-    plt.imshow(img)
-    plt.title("Original Image")
+
+    plt.figure(figsize=(10, 3), facecolor='none', frameon=False)
+    plt.imshow(img, aspect='auto')  # 关键参数：aspect='auto'
     plt.axis('off')
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # 完全去掉边距
     plt.show()
