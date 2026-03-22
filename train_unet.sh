@@ -5,12 +5,12 @@
 
 # 主要运行
 python train_unet.py \
-    --model_type "unet_resnet50" \
-    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data12/aug_Training_Images/" \
-    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data12/aug_Training_Labels/" \
-    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data12/Validation_Images/" \
-    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data12/Validation_Labels/" \
-    --save_path "./checkpoints/unet_resnet50_dice_loss_training_Mosaic_4_seed33" \
+    --model_type "deeplabv3p_xception" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
+    --save_path "./checkpoints2/deeplabv3p_xception_dice_loss_training_Mosaic_4_seed33" \
     --epoch "200" \
     --lr "1e-4" \
     --batch_size "8" \
@@ -18,32 +18,37 @@ python train_unet.py \
     --num_workers "4" \
     --input_size "352" \
     --num_classes "1" \
-#    --use_aspp \
-#    --use_se \
+    --seed "33" \
+    # --use_aspp \
+    # --use_se \
+    --xception_width_mult "0.5" \
 
 
 #试试
-python train_unet.py \
-    --model_type "unet_resnet34" \
-    --train_image_path "/home/data/sam-unet/shi_ce/data_seg/Training_Images/" \
-    --train_mask_path "/home/data/sam-unet/shi_ce/data_seg/Training_Labels/" \
-    --val_image_path "/home/data/sam-unet/shi_ce/data_seg/Validation_Images/" \
-    --val_mask_path "/home/data/sam-unet/shi_ce/data_seg/Validation_Labels/" \
-    --save_path "./checkpoints1/unet_resnet34_dice_bce_loss_training_seed33" \
-    --epoch "200" \
-    --lr "1e-4" \
-    --batch_size "8" \
-    --weight_decay "1e-4" \
-    --num_workers "4" \
-    --input_size "352" \
-    --num_classes "1" \
+# python train_unet.py \
+#     --model_type "unet_resnet34" \
+#     --train_image_path "/home/data/sam-unet/shi_ce/data_seg/Training_Images/" \
+#     --train_mask_path "/home/data/sam-unet/shi_ce/data_seg/Training_Labels/" \
+#     --val_image_path "/home/data/sam-unet/shi_ce/data_seg/Validation_Images/" \
+#     --val_mask_path "/home/data/sam-unet/shi_ce/data_seg/Validation_Labels/" \
+#     --save_path "./checkpoints1/unet_resnet34_dice_bce_loss_training_seed33" \
+#     --epoch "200" \
+#     --lr "1e-4" \
+#     --batch_size "8" \
+#     --weight_decay "1e-4" \
+#     --num_workers "4" \
+#     --input_size "352" \
+#     --num_classes "1" \
 #    --use_aspp \
 #    --use_se \
+
+
+
 # 可选参数：
 # --freeze_backbone  # 冻结主干网络参数
 # --model_type 可选值: 
 #   UNet系列: "unet_base", "unet_resnet18", "unet_resnet34", "unet_resnet50", "unet_resnet101", "unet_resnet152"
-#   FCN系列: "fcn8s"
+#   FCN系列: "fcn8s", "fcn_resnet34", "fcn_resnet50"
 #   DeepLabV3+系列: "deeplabv3p_resnet50", "deeplabv3p_resnet101", "deeplabv3p_xception"
 
 # 模块说明：

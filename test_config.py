@@ -75,10 +75,31 @@ def create_parser():
     parser = argparse.ArgumentParser("UNet Model Testing")
     parser.add_argument("--model_path", type=str, required=True,
                         help="训练好的模型路径")
-    parser.add_argument("--model_type", type=str, default="unet_resnet18", 
-                        choices=["unet_base", "unet_resnet18", "unet_resnet34", "unet_resnet50", "unet_resnet101", "unet_resnet152",
-                                "fcn8s", "deeplabv3p_resnet50", "deeplabv3p_resnet101", "deeplabv3p_xception"],
-                        help="分割模型类型")
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        default="unet_resnet18",
+        choices=[
+            "unet_base",
+            "unet_resnet18",
+            "unet_resnet34",
+            "unet_resnet50",
+            "unet_resnet101",
+            "unet_resnet152",
+            "fcn8s",
+            "fcn_resnet34",
+            "fcn_resnet50",
+            "fcn32s_vgg16",
+            "segnet",
+            "deconvnet",
+            "refinenet_resnet50",
+            "pspnet_resnet50",
+            "deeplabv3p_resnet50",
+            "deeplabv3p_resnet101",
+            "deeplabv3p_xception",
+        ],
+        help="分割模型类型",
+    )
     parser.add_argument("--test_image_path", type=str, required=True,
                         help="测试图像路径")
     parser.add_argument("--test_mask_path", type=str, required=True,
@@ -108,6 +129,12 @@ def create_parser():
     parser.add_argument("--attention_type", type=str, default=None,
                         choices=["se", "cbam", "ca", "eca"],
                         help="注意力模块类型（优先级高于--use_*参数）")
+
+    # DeepLabV3+ Xception 相关（需与训练配置保持一致）
+    parser.add_argument("--xception_width_mult", type=float, default=1.0,
+                        help="Xception 宽度系数，需与训练时保持一致（仅对 deeplabv3p_xception 生效）")
+    parser.add_argument("--xception_output_stride", type=int, default=16, choices=[8, 16, 32],
+                        help="Xception output_stride，需与训练时保持一致（仅对 deeplabv3p_xception 生效）")
     
     return parser
 

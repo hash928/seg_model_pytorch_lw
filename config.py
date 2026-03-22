@@ -2,6 +2,7 @@
 # 配置管理模块
 
 import argparse
+import os
 import re
 import sys
 
@@ -71,10 +72,31 @@ def parse_shell_args(shell_file='train_unet.sh'):
 def create_parser():
     """创建参数解析器"""
     parser = argparse.ArgumentParser("UNet Model Training")
-    parser.add_argument("--model_type", type=str, default="unet_base", 
-                        choices=["unet_base", "unet_resnet18", "unet_resnet34", "unet_resnet50", "unet_resnet101", "unet_resnet152",
-                                "fcn8s", "deeplabv3p_resnet50", "deeplabv3p_resnet101", "deeplabv3p_xception"],
-                        help="分割模型类型")
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        default="unet_base",
+        choices=[
+            "unet_base",
+            "unet_resnet18",
+            "unet_resnet34",
+            "unet_resnet50",
+            "unet_resnet101",
+            "unet_resnet152",
+            "fcn8s",
+            "fcn_resnet34",
+            "fcn_resnet50",
+            "fcn32s_vgg16",
+            "segnet",
+            "deconvnet",
+            "refinenet_resnet50",
+            "pspnet_resnet50",
+            "deeplabv3p_resnet50",
+            "deeplabv3p_resnet101",
+            "deeplabv3p_xception",
+        ],
+        help="分割模型类型",
+    )
     parser.add_argument("--pretrained", action="store_true", 
                         help="是否使用预训练的backbone（仅对UNet-ResNet模型有效）")
     parser.add_argument("--train_image_path", type=str, required=True, 
@@ -113,15 +135,40 @@ def create_parser():
                         help="输入图像尺寸")
     parser.add_argument("--num_classes", type=int, default=1,
                         help="分割类别数（1为二值分割）")
+
+    # 复现 / 性能相关
+    parser.add_argument("--seed", type=int, default=33,
+                        help="随机数种子（影响数据shuffle、数据增强等）")
+    parser.add_argument("--deterministic", action="store_true",
+                        help="启用确定性训练（更可复现但通常更慢）")
+
+    # DeepLabV3+ Xception 相关
+    parser.add_argument("--xception_width_mult", type=float, default=1.0,
+                        help="Xception 宽度系数，<1 会减小通道数以加速/省显存（仅对 deeplabv3p_xception 生效）")
+    parser.add_argument("--xception_output_stride", type=int, default=16, choices=[8, 16, 32],
+                        help="Xception output_stride（仅对 deeplabv3p_xception 生效；16 通常精度/速度较平衡）")
     
     return parser
 
 def parse_args():
-    """解析命令行参数，优先从shell脚本读取"""
-    # 首先尝试从shell脚本读取参数
-    shell_args = parse_shell_args()
-    
-    # 将shell脚本中的参数转换为命令行参数格式
+    """解析命令行参数。
+
+    兼容原工作流：直接运行 ``python train_unet.py``（无任何 CLI 参数）时，
+    仍从 shell 脚本读取参数（默认 ``train_unet.sh``）。
+
+    若通过其它脚本传入参数（如 ``duo_mo_xing.sh`` 里的多行 ``python train_unet.py --...``），
+    只要 ``sys.argv`` 中带有除脚本名以外的参数，则完全以命令行为准，不再覆盖 ``sys.argv``。
+
+    可选：设置环境变量 ``UNET_TRAIN_SHELL`` 指定在无 CLI 参数时要解析的脚本路径
+    （默认仍为 ``train_unet.sh``）。
+    """
+    # 仅在没有传入任何 CLI 参数时使用 shell（保持与原先「只靠 train_unet.sh」一致）
+    argv_has_cli = len(sys.argv) > 1
+    shell_args = {}
+    if not argv_has_cli:
+        shell_file = os.environ.get("UNET_TRAIN_SHELL", "train_unet.sh")
+        shell_args = parse_shell_args(shell_file)
+
     if shell_args:
         sys.argv = [sys.argv[0]]  # 清空现有参数
         for key, value in shell_args.items():
@@ -130,9 +177,7 @@ def parse_args():
                     sys.argv.append(f"--{key}")
             else:
                 sys.argv.extend([f"--{key}", str(value)])
-    
-    # 解析命令行参数
+
     parser = create_parser()
     args = parser.parse_args()
-    
     return args

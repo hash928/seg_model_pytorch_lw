@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional
 from backbones.aligned_xception import xception_backbone
 from backbones.resnet_atrous import resnet50_atrous, resnet101_atrous
 
@@ -97,7 +98,16 @@ class ASPP(nn.Module):
     pass
 
 
-def get_backbone(in_channels, backbone_type='resnet101'):
+def _make_divisible(v: float, divisor: int = 8, min_value: Optional[int] = None) -> int:
+    if min_value is None:
+        min_value = divisor
+    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+    if new_v < 0.9 * v:
+        new_v += divisor
+    return int(new_v)
+
+
+def get_backbone(in_channels, backbone_type='resnet101', xception_width_mult: float = 1.0, xception_output_stride: int = 16):
     """
     获取DeepLabV3+的Backbone
     :param in_channels: 输出channels也就是图像的channels
@@ -113,9 +123,9 @@ def get_backbone(in_channels, backbone_type='resnet101'):
         atrous_channels = 2048
         low_level_channels = 256
     elif backbone_type == 'xception':
-        backbone = xception_backbone(in_channels=in_channels)
-        atrous_channels = 2048
-        low_level_channels = 128
+        backbone = xception_backbone(in_channels=in_channels, output_stride=xception_output_stride, width_mult=xception_width_mult)
+        atrous_channels = _make_divisible(2048 * xception_width_mult)
+        low_level_channels = _make_divisible(128 * xception_width_mult)
     else:
         raise ValueError('backbone type error!')
     return backbone, atrous_channels, low_level_channels
@@ -125,9 +135,14 @@ class DeepLabV3P(nn.Module):
     aspp_out_channels = 256  # ASPP最终输出channels=256
     reduce_to_channels = 48  # 论文中说low-level特征减少channels到48
 
-    def __init__(self, backbone_type, in_channels, n_class):
+    def __init__(self, backbone_type, in_channels, n_class, xception_width_mult: float = 1.0, xception_output_stride: int = 16):
         super(DeepLabV3P, self).__init__()
-        backbone, aspp_in_channels, low_level_in_channels = get_backbone(in_channels, backbone_type)  # 取得backbone
+        backbone, aspp_in_channels, low_level_in_channels = get_backbone(
+            in_channels,
+            backbone_type,
+            xception_width_mult=xception_width_mult,
+            xception_output_stride=xception_output_stride,
+        )  # 取得backbone
 
         self.backbone = backbone
         self.aspp = ASPP(aspp_in_channels, self.aspp_out_channels)  # 论文建议channels=256

@@ -41,6 +41,17 @@ except ImportError:
     from pytorch_grad_cam.utils.image import show_cam_on_image
     from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
+import random
+
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
 
 class SegmentationModelOutputWrapper(nn.Module):
     """
@@ -371,6 +382,7 @@ def visualize_gradcam(
 
 
 def main():
+    set_seed(1024)
     import argparse
     
     parser = argparse.ArgumentParser(description='UNetb Grad-CAM 可视化')
@@ -419,7 +431,11 @@ def main():
     parser.add_argument('--save_mat_path', type=str, default=None,
                         help='保存 .mat 文件路径（可选，包含 grayscale_cam 以及可选 pred_prob/roi_mask）')
     
+    parser.add_argument('--seed', type=int, default=42,
+                        help='随机数种子')
+    
     args = parser.parse_args()
+    set_seed(args.seed)
     
     # 创建模型
     print(f"正在创建模型: {args.model_type}")
@@ -447,7 +463,7 @@ def main():
         roi_mode=args.roi_mode,
         roi_erode_iters=args.roi_erode_iters,
         roi_erode_kernel=args.roi_erode_kernel,
-        save_mat_path=args.save_mat_path
+        save_mat_path=args.save_mat_path,
     )
 
 

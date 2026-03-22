@@ -1,0 +1,112 @@
+python train_unet.py \
+    --model_type "unet_resnet18" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
+    --save_path "./checkpoints2/unet_resnet18_dice_loss_training_Mosaic_4_seed33" \
+    --epoch "200" \
+    --lr "1e-4" \
+    --batch_size "8" \
+    --weight_decay "1e-4" \
+    --num_workers "4" \
+    --input_size "352" \
+    --num_classes "1" \
+    --seed "33" \
+
+python train_unet.py \
+    --model_type "fcn32s_vgg16" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
+    --save_path "./checkpoints2/fcn32s_vgg16_dice_loss_training_Mosaic_4_seed33" \
+    --epoch "200" \
+    --lr "1e-4" \
+    --batch_size "8" \
+    --weight_decay "1e-4" \
+    --num_workers "4" \
+    --input_size "352" \
+    --num_classes "1" \
+    --seed "33" \
+
+python train_unet.py \
+    --model_type "segnet" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
+    --save_path "./checkpoints2/segnet_dice_loss_training_Mosaic_4_seed33" \
+    --epoch "200" \
+    --lr "1e-4" \
+    --batch_size "8" \
+    --weight_decay "1e-4" \
+    --num_workers "4" \
+    --input_size "352" \
+    --num_classes "1" \
+    --seed "33" \
+
+python train_unet.py \
+    --model_type "deconvnet" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
+    --save_path "./checkpoints2/deconvnet_dice_loss_training_Mosaic_4_seed33" \
+    --epoch "200" \
+    --lr "1e-4" \
+    --batch_size "8" \
+    --weight_decay "1e-4" \
+    --num_workers "4" \
+    --input_size "352" \
+    --num_classes "1" \
+    --seed "33" \
+
+python train_unet.py \
+    --model_type "refinenet_resnet50" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
+    --save_path "./checkpoints2/refinenet_resnet50_dice_loss_training_Mosaic_4_seed33" \
+    --epoch "200" \
+    --lr "1e-4" \
+    --batch_size "8" \
+    --weight_decay "1e-4" \
+    --num_workers "4" \
+    --input_size "352" \
+    --num_classes "1" \
+    --seed "33" \
+
+
+python train_unet.py \
+    --model_type "pspnet_resnet50" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
+    --save_path "./checkpoints2/pspnet_resnet50_dice_loss_training_Mosaic_4_seed33" \
+    --epoch "200" \
+    --lr "1e-4" \
+    --batch_size "8" \
+    --weight_decay "1e-4" \
+    --num_workers "4" \
+    --input_size "352" \
+    --num_classes "1" \
+    --seed "33" \
+
+python train_unet.py \
+    --model_type "unet_base" \
+    --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
+    --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
+    --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
+    --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
+    --save_path "./checkpoints2/unet_base_dice_loss_training_Mosaic_4_seed33" \
+    --epoch "200" \
+    --lr "1e-4" \
+    --batch_size "8" \
+    --weight_decay "1e-4" \
+    --num_workers "4" \
+    --input_size "352" \
+    --num_classes "1" \
+    --seed "33" \

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional
 
 """
 Modified Aligned Xception
@@ -23,6 +24,19 @@ depthwise convolution, similar to MobileNet design [29]
 
 
 """
+
+def _make_divisible(v: float, divisor: int = 8, min_value: Optional[int] = None) -> int:
+    """
+    将通道数调整为可整除的整数，便于加速与对齐。
+    参考 MobileNet 的 make_divisible 思路。
+    """
+    if min_value is None:
+        min_value = divisor
+    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+    # 避免四舍五入导致下降过多
+    if new_v < 0.9 * v:
+        new_v += divisor
+    return int(new_v)
 
 
 def _print_shape(func):
@@ -161,11 +175,12 @@ class ExitBlock(nn.Module):
 
 
 class XceptionBackbone(nn.Module):
-    def __init__(self, in_planes, output_stride=16):
+    def __init__(self, in_planes, output_stride=16, width_mult: float = 1.0):
         """
         用于DeepLabV3+的AlignedXception
         :param in_planes: 输入通道，也就是图像的通道
         :param output_stride: 主干输出spatial与输入spatial的比值可以是8,16,32,论文采用16最好
+        :param width_mult: 宽度系数，用于按比例缩放通道数（例如 0.75/0.5）。
         """
         super(XceptionBackbone, self).__init__()
         # 根据DeepLabV3讨论的Atrous Conv
@@ -184,37 +199,49 @@ class XceptionBackbone(nn.Module):
         else:
             raise ValueError('output stride error!')
 
+        if width_mult <= 0:
+            raise ValueError('width_mult must be > 0')
+
+        c32 = _make_divisible(32 * width_mult)
+        c64 = _make_divisible(64 * width_mult)
+        c128 = _make_divisible(128 * width_mult)
+        c256 = _make_divisible(256 * width_mult)
+        c728 = _make_divisible(728 * width_mult)
+        c1024 = _make_divisible(1024 * width_mult)
+        c1536 = _make_divisible(1536 * width_mult)
+        c2048 = _make_divisible(2048 * width_mult)
+
         # Entry Flow
         self.entry_conv1 = nn.Sequential(
-            nn.Conv2d(in_planes, 32, 3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(in_planes, c32, 3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(c32),
             nn.ReLU(inplace=True))
         self.entry_conv2 = nn.Sequential(
-            nn.Conv2d(32, 64, 3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(c32, c64, 3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(c64),
             nn.ReLU(inplace=True))
-        self.entry_block1 = nn.Sequential(Block(64, 128, stride=2))
-        self.entry_block2 = nn.Sequential(Block(128, 256, stride=2))
+        self.entry_block1 = nn.Sequential(Block(c64, c128, stride=2))
+        self.entry_block2 = nn.Sequential(Block(c128, c256, stride=2))
         self.entry_block3 = nn.Sequential(
-            Block(256, 728, stride=strides[0], dilation=dilations[0]))
+            Block(c256, c728, stride=strides[0], dilation=dilations[0]))
 
         # Middle Flow
-        mid_blocks = [Block(728, 728, stride=1, dilation=dilations[1])] * 16
+        mid_blocks = [Block(c728, c728, stride=1, dilation=dilations[1])] * 16
         self.mid_blocks = nn.Sequential(*mid_blocks)
 
         # Exit Flow
-        self.exit_block = ExitBlock(728, 1024, stride=strides[1], dilation=dilations[1])
+        self.exit_block = ExitBlock(c728, c1024, stride=strides[1], dilation=dilations[1])
         self.exit_conv1 = nn.Sequential(
-            SepConv2d(1024, 1536, 3, dilation=dilations[1]),
-            nn.BatchNorm2d(1536),
+            SepConv2d(c1024, c1536, 3, dilation=dilations[1]),
+            nn.BatchNorm2d(c1536),
             nn.ReLU(inplace=True))
         self.exit_conv2 = nn.Sequential(
-            SepConv2d(1536, 1536, 3, dilation=dilations[1]),
-            nn.BatchNorm2d(1536),
+            SepConv2d(c1536, c1536, 3, dilation=dilations[1]),
+            nn.BatchNorm2d(c1536),
             nn.ReLU(inplace=True))
         self.exit_conv3 = nn.Sequential(
-            SepConv2d(1536, 2048, 3, dilation=dilations[1]),
-            nn.BatchNorm2d(2048),
+            SepConv2d(c1536, c2048, 3, dilation=dilations[1]),
+            nn.BatchNorm2d(c2048),
             nn.ReLU(inplace=True))
         self._init_weight()
         pass
@@ -249,9 +276,9 @@ class XceptionBackbone(nn.Module):
     pass
 
 
-def xception_backbone(in_channels, output_stride=16):
+def xception_backbone(in_channels, output_stride=16, width_mult: float = 1.0):
     if output_stride in (8, 16, 32):
-        return XceptionBackbone(in_channels, output_stride)
+        return XceptionBackbone(in_channels, output_stride, width_mult=width_mult)
     else:
         raise ValueError('output stride error! should be 8, 16 or 32')
 

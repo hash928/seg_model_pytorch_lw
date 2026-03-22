@@ -77,7 +77,18 @@ class UNetTester:
                 )
             else:
                 # FCN8s和DeepLabV3+模型不使用pretrained、ASPP和注意力模块参数
-                model = create_model(self.args.model_type, self.args.num_classes, False, False, False, False, False, False, None)
+                model = create_model(
+                    self.args.model_type,
+                    self.args.num_classes,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    attention_type=None,
+                    xception_width_mult=getattr(self.args, "xception_width_mult", 1.0),
+                    xception_output_stride=getattr(self.args, "xception_output_stride", 16),
+                )
             
             model = model.to(self.device)
             print(f"{self.args.model_type}模型创建成功")

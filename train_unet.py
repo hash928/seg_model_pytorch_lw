@@ -27,9 +27,7 @@ def set_random_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    # 确保 CUDA 操作是可复现的
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # cudnn 的 deterministic/benchmark 会在 main() 里根据 args 控制
 
 def get_worker_init_fn(seed):
     """返回worker初始化函数，为每个worker进程设置随机种子"""
@@ -49,8 +47,18 @@ def main():
     args = parse_args()
     
     # 设置随机种子（在创建数据集之前设置）
-    seed = 33  # 可以根据需要更改种子值
+    seed = getattr(args, "seed", 33)
     set_random_seed(seed)
+
+    # 复现 vs 性能：deterministic 更可复现但通常更慢
+    if getattr(args, "deterministic", False):
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        print("已启用 cudnn deterministic：训练更可复现，但通常更慢。")
+    else:
+        torch.backends.cudnn.deterministic = False
+        torch.backends.cudnn.benchmark = True
+        print("已启用 cudnn benchmark：训练更快，但不同运行间可能略有差异。")
     
     # 创建用于DataLoader的generator，确保shuffle的可复现性
     generator = torch.Generator()

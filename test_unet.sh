@@ -3,31 +3,34 @@
 # UNet 模型测试脚本
 # 使用示例：bash test_unet.sh
 
-#  python test_unet.py \
-#     --model_path "./checkpoints/unet_resnet34_aspp_se_dice_bce_loss_training_Mosaic_4_seed512/unet_resnet34-best.pth" \
-#     --model_type "unet_resnet34" \
-#     --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data12/Test_Images/" \
-#     --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data12/Test_Labels/" \
-#     --save_path "./checkpoints/unet_resnet34_aspp_se_dice_bce_loss_training_Mosaic_4_seed512/test_results/" \
-#     --visualize \
-#     --input_size "352" \
-#     --num_classes "1" \
-#     --batch_size "1" \
-#     --threshold "0.5" \
-#     --use_aspp \
-#     --use_se \
+ python test_unet.py \
+    --model_path "./checkpoints2/deeplabv3p_xception_dice_loss_training_Mosaic_4_seed33/deeplabv3p_xception-best.pth" \
+    --model_type "deeplabv3p_xception" \
+    --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
+    --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
+    --save_path "./checkpoints2/deeplabv3p_xception_dice_loss_training_Mosaic_4_seed33/test_results/" \
+    --visualize \
+    --input_size "352" \
+    --num_classes "1" \
+    --batch_size "1" \
+    --threshold "0.5" \
+    # --use_aspp \
+    # --use_se \
+     --xception_width_mult "0.5" \
 
-  python test_unet.py \
-     --model_path "./checkpoints1/unet_resnet34_dice_bce_loss_training_seed33/unet_resnet34-200.pth" \
-     --model_type "unet_resnet34" \
-     --test_image_path "/home/data/sam-unet/shi_ce/data_seg/Test_Images/" \
-     --test_mask_path "/home/data/sam-unet/shi_ce/data_seg/Test_Labels/" \
-     --save_path "./checkpoints1/unet_resnet34_dice_bce_loss_training_seed33/test_results/" \
-     --visualize \
-     --input_size "352" \
-     --num_classes "1" \
-     --batch_size "1" \
-     --threshold "0.5" \
+
+
+  # python test_unet.py \
+  #    --model_path "./checkpoints1/unet_resnet34_dice_bce_loss_training_seed33/unet_resnet34-200.pth" \
+  #    --model_type "unet_resnet34" \
+  #    --test_image_path "/home/data/sam-unet/shi_ce/data_seg/Test_Images/" \
+  #    --test_mask_path "/home/data/sam-unet/shi_ce/data_seg/Test_Labels/" \
+  #    --save_path "./checkpoints1/unet_resnet34_dice_bce_loss_training_seed33/test_results/" \
+  #    --visualize \
+  #    --input_size "352" \
+  #    --num_classes "1" \
+  #    --batch_size "1" \
+  #    --threshold "0.5" \
 #    --use_aspp \
 #    --use_se \
 
@@ -35,7 +38,10 @@
 # --model_path: 训练好的模型路径
 # --model_type: 分割模型类型，可选值: 
 #   UNet系列: "unet_base", "unet_resnet18", "unet_resnet34", "unet_resnet50", "unet_resnet101", "unet_resnet152"
-#   FCN系列: "fcn8s"
+#   FCN系列: "fcn8s", "fcn_resnet34", "fcn_resnet50", "fcn32s_vgg16"
+#   其它编码-解码结构: "segnet", "deconvnet"
+#   RefineNet系列: "refinenet_resnet50"
+#   PSPNet系列: "pspnet_resnet50"
 #   DeepLabV3+系列: "deeplabv3p_resnet50", "deeplabv3p_resnet101", "deeplabv3p_xception"
 # --test_image_path: 测试图像路径
 # --test_mask_path: 测试标注路径

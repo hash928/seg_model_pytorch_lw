@@ -269,7 +269,7 @@ if __name__ == '__main__':
 
 
 
-    in_data = torch.randint(0, 256, (1, 3, 224, 224), dtype=torch.float)  # 测试输入
+    in_data = torch.randint(0, 256, (1, 3, 352, 352), dtype=torch.float)  # 测试输入
     in_data = in_data.to(dev)  # 装入gpu
     print(in_data.shape)
 

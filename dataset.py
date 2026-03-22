@@ -381,7 +381,10 @@ class FullDataset(Dataset):
                 Resize((size, size)),
                 RandomNoise(noise_types=['gaussian', 'salt_pepper'], p=0.3),
                 RandomHorizontalFlip(p=0.5),
-                RandomVerticalFlip(p=0.5),
+                # RandomVerticalFlip(p=0.5),
+                RandomBrightness(brightness_range=(0.8, 1.2), p=0.5),
+                RandomContrast(contrast_range=(0.8, 1.2), p=0.5),
+                RandomBlur(blur_types=['gaussian', 'median', 'average'], kernel_range=(3, 7), p=0.5),
                 RandomRotation(degrees=15),
                 ToTensor(),
                 Normalize()

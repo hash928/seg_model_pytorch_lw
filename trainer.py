@@ -99,7 +99,15 @@ class UNetTrainer:
                 )
             else:
                 # FCN8s和DeepLabV3+模型不使用pretrained、ASPP和SE参数
-                model = create_model(self.args.model_type, self.args.num_classes, False, False, False)
+                model = create_model(
+                    self.args.model_type,
+                    self.args.num_classes,
+                    False,
+                    False,
+                    False,
+                    xception_width_mult=getattr(self.args, "xception_width_mult", 1.0),
+                    xception_output_stride=getattr(self.args, "xception_output_stride", 16),
+                )
             
             model = model.to(self.device)
             print(f"{self.args.model_type}模型创建成功")
@@ -169,7 +177,7 @@ class UNetTrainer:
                     outputs = self.model(images)
                     
                     # 计算损失
-                    loss = bce_dice_loss(outputs, masks)
+                    loss = dice_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)
@@ -227,7 +235,7 @@ class UNetTrainer:
                     outputs = self.model(images)
                     
                     # 计算损失
-                    loss = bce_dice_loss(outputs, masks)
+                    loss = dice_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)

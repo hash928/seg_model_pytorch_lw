@@ -56,18 +56,21 @@ class FCN(nn.Module):
                 nn.init.constant_(m.bias, 0)
     
     def forward(self, x):
+        # 记录输入的空间尺寸，保证最后输出与输入一致
+        input_size = x.shape[2:]
+
         # 获取backbone特征
         features = self.backbone(x)
         
         # FCN头部
         x = self.fcn_head(features)
         
-        # 上采样到原始大小
+        # 上采样到接近输入大小
         x = self.upsample(x)
         
-        # 确保输出大小与输入一致
-        if x.shape[2:] != x.shape[2:]:
-            x = F.interpolate(x, size=x.shape[2:], mode='bilinear', align_corners=True)
+        # 精确调整到原始输入大小（避免由于转置卷积造成的1~2像素偏差）
+        if x.shape[2:] != input_size:
+            x = F.interpolate(x, size=input_size, mode='bilinear', align_corners=True)
         
         return x
 
