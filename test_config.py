@@ -2,8 +2,10 @@
 # 测试配置管理模块
 
 import argparse
+import os
 import re
 import sys
+
 
 def parse_shell_args(shell_file='test_unet.sh'):
     """从shell脚本中解析参数"""
@@ -11,7 +13,7 @@ def parse_shell_args(shell_file='test_unet.sh'):
     try:
         with open(shell_file, 'r') as f:
             content = f.read()
-            
+
         # 移除注释行
         lines = content.split('\n')
         active_lines = []
@@ -20,11 +22,11 @@ def parse_shell_args(shell_file='test_unet.sh'):
             if line and not line.startswith('#'):
                 active_lines.append(line)
         content = '\n'.join(active_lines)
-            
+
         # 使用正则表达式匹配参数
         pattern = r'--(\w+)(?:\s+"([^"]+)")?'
         matches = re.findall(pattern, content)
-        
+
         for key, value in matches:
             # 处理布尔参数（如 --visualize）
             if value == '':
@@ -36,7 +38,7 @@ def parse_shell_args(shell_file='test_unet.sh'):
                 elif value is not None and re.match(r'^-?\d*\.\d+$', value):
                     value = float(value)
                 args_dict[key] = value
-        
+
         # 处理布尔参数 - 检查非注释行
         for line in lines:
             line = line.strip()
@@ -58,17 +60,18 @@ def parse_shell_args(shell_file='test_unet.sh'):
                     match = re.search(r'--attention_type\s+"?(\w+)"?', line)
                     if match:
                         args_dict['attention_type'] = match.group(1)
-                
+
         print("从shell脚本读取的参数：")
         for key, value in args_dict.items():
             print(f"{key}: {value}")
-            
+
     except FileNotFoundError:
         print(f"警告：未找到shell脚本 {shell_file}，将使用命令行参数")
     except Exception as e:
         print(f"警告：解析shell脚本时出错：{e}，将使用命令行参数")
-        
+
     return args_dict
+
 
 def create_parser():
     """创建参数解析器"""
@@ -135,26 +138,39 @@ def create_parser():
                         help="Xception 宽度系数，需与训练时保持一致（仅对 deeplabv3p_xception 生效）")
     parser.add_argument("--xception_output_stride", type=int, default=16, choices=[8, 16, 32],
                         help="Xception output_stride，需与训练时保持一致（仅对 deeplabv3p_xception 生效）")
-    
+
     return parser
 
+
 def parse_args():
-    """解析命令行参数，优先从shell脚本读取"""
-    # 首先尝试从shell脚本读取参数
-    shell_args = parse_shell_args()
-    
-    # 将shell脚本中的参数转换为命令行参数格式
+    """解析命令行参数。
+
+    兼容原工作流：直接运行 ``python test_unet.py``（无任何 CLI 参数）时，
+    仍从 shell 脚本读取参数（默认 ``test_unet.sh``）。
+
+    若通过其它脚本传入参数（如 ``duo_mo_xing_test.sh`` 里的多行
+    ``python test_unet.py --...``），只要 ``sys.argv`` 中带有除脚本名以外的参数，
+    则完全以命令行为准，不再覆盖 ``sys.argv``。
+
+    可选：设置环境变量 ``UNET_TEST_SHELL`` 指定在无 CLI 参数时要解析的脚本路径
+    （默认仍为 ``test_unet.sh``）。
+    """
+    argv_has_cli = len(sys.argv) > 1
+    shell_args = {}
+    if not argv_has_cli:
+        shell_file = os.environ.get("UNET_TEST_SHELL", "test_unet.sh")
+        shell_args = parse_shell_args(shell_file)
+
     if shell_args:
-        sys.argv = [sys.argv[0]]  # 清空现有参数
+        sys.argv = [sys.argv[0]]
         for key, value in shell_args.items():
             if isinstance(value, bool):
                 if value:
                     sys.argv.append(f"--{key}")
             else:
                 sys.argv.extend([f"--{key}", str(value)])
-    
-    # 解析命令行参数
+
     parser = create_parser()
     args = parser.parse_args()
-    
+
     return args

@@ -3,7 +3,6 @@
 
 import os
 import torch
-import torch.optim as opt
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -102,7 +101,7 @@ class UNetTrainer:
                 model = create_model(
                     self.args.model_type,
                     self.args.num_classes,
-                    False,
+                    self.args.pretrained,
                     False,
                     False,
                     xception_width_mult=getattr(self.args, "xception_width_mult", 1.0),
@@ -148,6 +147,31 @@ class UNetTrainer:
         self.csv_file = open(self.csv_path, 'w', newline='')
         self.csv_writer = csv.writer(self.csv_file)
         self.csv_writer.writerow(['epoch', 'train_loss', 'train_iou', 'train_dice', 'val_loss', 'val_iou', 'val_dice', 'learning_rate'])
+
+    def _compute_loss(self, outputs, masks):
+        """根据配置计算损失函数。"""
+        loss_type = getattr(self.args, 'loss_type', 'dice')
+
+        if loss_type == 'dice':
+            return dice_loss(outputs, masks)
+        if loss_type == 'bce':
+            return bce_loss(outputs, masks)
+        if loss_type == 'focal':
+            return focal_loss(
+                outputs,
+                masks,
+                alpha=getattr(self.args, 'focal_alpha', 0.25),
+                gamma=getattr(self.args, 'focal_gamma', 2.0),
+            )
+        if loss_type == 'bce_dice':
+            return bce_dice_loss(
+                outputs,
+                masks,
+                bce_weight=getattr(self.args, 'bce_dice_bce_weight', 0.5),
+                dice_weight=getattr(self.args, 'bce_dice_dice_weight', 0.5),
+            )
+
+        raise ValueError(f"不支持的损失函数类型: {loss_type}")
     
     def validate(self):
         """验证函数"""
@@ -175,9 +199,12 @@ class UNetTrainer:
                     
                     # 前向传播
                     outputs = self.model(images)
+                    # loss 计算放到 fp32，避免混精下 sigmoid/dice 产生 NaN
+                    outputs = torch.nan_to_num(outputs.float(), nan=0.0, posinf=0.0, neginf=0.0)
+                    masks = masks.float()
                     
                     # 计算损失
-                    loss = dice_loss(outputs, masks)
+                    loss = self._compute_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)
@@ -233,9 +260,12 @@ class UNetTrainer:
                 with torch.amp.autocast(device_type):
                     # 前向传播
                     outputs = self.model(images)
+                    # loss/指标计算放到 fp32，避免混精下 sigmoid/dice 产生 NaN
+                    outputs = torch.nan_to_num(outputs.float(), nan=0.0, posinf=0.0, neginf=0.0)
+                    masks = masks.float()
                     
                     # 计算损失
-                    loss = dice_loss(outputs, masks)
+                    loss = self._compute_loss(outputs, masks)
                     
                     # 计算指标
                     iou, dice = calculate_metrics(outputs, masks)

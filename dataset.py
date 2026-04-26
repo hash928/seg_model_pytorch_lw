@@ -24,7 +24,12 @@ class Resize(object):
 
     def __call__(self, data):
         image, label = data['image'], data['label']
-        return {'image': F.resize(image, self.size), 'label': F.resize(label, self.size, interpolation=InterpolationMode.BICUBIC)}
+        # 分割 mask 需要保持类别值（0/1 或 0/255），必须使用 NEAREST
+        # 否则会把边界插值成灰度“软标签”，导致 dice/IoU 学不到/算不准。
+        return {
+            'image': F.resize(image, self.size),
+            'label': F.resize(label, self.size, interpolation=InterpolationMode.NEAREST),
+        }
 
 
 class RandomHorizontalFlip(object):

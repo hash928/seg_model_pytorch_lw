@@ -136,6 +136,39 @@ def create_parser():
     parser.add_argument("--num_classes", type=int, default=1,
                         help="分割类别数（1为二值分割）")
 
+    # 损失函数相关
+    parser.add_argument(
+        "--loss_type",
+        type=str,
+        default="dice",
+        choices=["focal", "dice", "bce", "bce_dice"],
+        help="损失函数类型（dice/bce/bce_dice/focal）",
+    )
+    parser.add_argument(
+        "--focal_alpha",
+        type=float,
+        default=0.25,
+        help="focal_loss 的 alpha 平衡因子",
+    )
+    parser.add_argument(
+        "--focal_gamma",
+        type=float,
+        default=2.0,
+        help="focal_loss 的 gamma 聚焦参数",
+    )
+    parser.add_argument(
+        "--bce_dice_bce_weight",
+        type=float,
+        default=0.5,
+        help="bce_dice_loss 中 BCE 的权重",
+    )
+    parser.add_argument(
+        "--bce_dice_dice_weight",
+        type=float,
+        default=0.5,
+        help="bce_dice_loss 中 Dice 的权重",
+    )
+
     # 复现 / 性能相关
     parser.add_argument("--seed", type=int, default=33,
                         help="随机数种子（影响数据shuffle、数据增强等）")

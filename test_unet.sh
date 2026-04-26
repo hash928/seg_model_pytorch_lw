@@ -3,20 +3,20 @@
 # UNet 模型测试脚本
 # 使用示例：bash test_unet.sh
 
- python test_unet.py \
-    --model_path "./checkpoints2/deeplabv3p_xception_dice_loss_training_Mosaic_4_seed33/deeplabv3p_xception-best.pth" \
-    --model_type "deeplabv3p_xception" \
+python test_unet.py \
+    --model_path "./checkpoints4/unet_resnet34_dice_loss_aspp_eca_training_Mosaic_4_seed8124/unet_resnet34-best.pth" \
+    --model_type "unet_resnet34" \
     --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
     --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
-    --save_path "./checkpoints2/deeplabv3p_xception_dice_loss_training_Mosaic_4_seed33/test_results/" \
+    --save_path "./checkpoints4/unet_resnet34_dice_loss_aspp_eca_training_Mosaic_4_seed8124/test_results/" \
     --visualize \
     --input_size "352" \
     --num_classes "1" \
     --batch_size "1" \
     --threshold "0.5" \
-    # --use_aspp \
-    # --use_se \
-     --xception_width_mult "0.5" \
+    --use_aspp \
+    --use_eca \
+    #   --xception_width_mult "0.5" \
 
 
 

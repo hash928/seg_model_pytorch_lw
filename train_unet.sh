@@ -5,12 +5,12 @@
 
 # 主要运行
 python train_unet.py \
-    --model_type "deeplabv3p_xception" \
+    --model_type "unet_resnet34" \
     --train_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Images/" \
     --train_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/aug_Training_Labels/" \
     --val_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Images/" \
     --val_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Validation_Labels/" \
-    --save_path "./checkpoints2/deeplabv3p_xception_dice_loss_training_Mosaic_4_seed33" \
+    --save_path "./checkpoints2/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33" \
     --epoch "200" \
     --lr "1e-4" \
     --batch_size "8" \
@@ -19,9 +19,10 @@ python train_unet.py \
     --input_size "352" \
     --num_classes "1" \
     --seed "33" \
-    # --use_aspp \
-    # --use_se \
-    --xception_width_mult "0.5" \
+    --loss_type "bce_dice" \
+    --use_aspp \
+    --use_se \
+    # --xception_width_mult "0.5" \
 
 
 #试试
@@ -79,7 +80,8 @@ python train_unet.py \
 # 7. 完整组合：--attention_type "cbam" --use_aspp --pretrained
 #
 # 注意：--attention_type 参数优先级高于 --use_* 参数
-
+#损失参数使用方法
+# --loss_type "dice" \ --loss_type "bce"  --loss_type "bce_dice" --loss_type "focal" --focal_alpha "0.25" --focal_gamma "2.0"
 #!/bin/bash
 
 # FCN8s 优化训练脚本

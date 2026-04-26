@@ -8,6 +8,11 @@ test_results/
 checkpoints/
 checkpoints1/
 checkpoints2/
+checkpoints3/
+checkpoints4/
+checkpoints5/
+checkpoints6/
+checkpoints7/
 pretrained_models/
 .vscode/
 # Python 缓存
