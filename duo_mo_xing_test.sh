@@ -82,18 +82,18 @@
 #     --use_aspp \
 #     --use_se
 
-python test_unet.py \
-    --model_path "./checkpoints5/unet_resnet34_bce_dice_loss_aspp_training_Mosaic_4_seed3368/unet_resnet34-best.pth" \
-    --model_type "unet_resnet34" \
-    --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
-    --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
-    --save_path "./checkpoints5/unet_resnet34_bce_dice_loss_aspp_training_Mosaic_4_seed3368/test_results/" \
-    --visualize \
-    --input_size "352" \
-    --num_classes "1" \
-    --batch_size "1" \
-    --threshold "0.5" \
-    --use_aspp
+# python test_unet.py \
+#     --model_path "./checkpoints5/unet_resnet34_bce_dice_loss_aspp_training_Mosaic_4_seed3368/unet_resnet34-best.pth" \
+#     --model_type "unet_resnet34" \
+#     --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
+#     --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
+#     --save_path "./checkpoints5/unet_resnet34_bce_dice_loss_aspp_training_Mosaic_4_seed3368/test_results/" \
+#     --visualize \
+#     --input_size "352" \
+#     --num_classes "1" \
+#     --batch_size "1" \
+#     --threshold "0.5" \
+#     --use_aspp
 
 # python test_unet.py \
 #     --model_path "./checkpoints5/unet_resnet34_bce_dice_loss_aspp_ca_training_Mosaic_4_seed33/unet_resnet34-best.pth" \
@@ -179,3 +179,74 @@ python test_unet.py \
 #     --threshold "0.5" \
 #     --use_aspp \
 #     --use_se
+
+
+python test_unet.py \
+    --model_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p1_wdice0p9/unet_resnet34-best.pth" \
+    --model_type "unet_resnet34" \
+    --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
+    --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
+    --save_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p1_wdice0p9/test_results/" \
+    --visualize \
+    --input_size "352" \
+    --num_classes "1" \
+    --batch_size "1" \
+    --threshold "0.5" \
+    --use_aspp \
+    --use_se
+
+python test_unet.py \
+    --model_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p25_wdice0p75/unet_resnet34-best.pth" \
+    --model_type "unet_resnet34" \
+    --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
+    --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
+    --save_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p25_wdice0p75/test_results/" \
+    --visualize \
+    --input_size "352" \
+    --num_classes "1" \
+    --batch_size "1" \
+    --threshold "0.5" \
+    --use_aspp \
+    --use_se
+
+python test_unet.py \
+    --model_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p5_wdice0p5/unet_resnet34-best.pth" \
+    --model_type "unet_resnet34" \
+    --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
+    --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
+    --save_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p5_wdice0p5/test_results/" \
+    --visualize \
+    --input_size "352" \
+    --num_classes "1" \
+    --batch_size "1" \
+    --threshold "0.5" \
+    --use_aspp \
+    --use_se
+
+python test_unet.py \
+    --model_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p75_wdice0p25/unet_resnet34-best.pth" \
+    --model_type "unet_resnet34" \
+    --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
+    --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
+    --save_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p75_wdice0p25/test_results/" \
+    --visualize \
+    --input_size "352" \
+    --num_classes "1" \
+    --batch_size "1" \
+    --threshold "0.5" \
+    --use_aspp \
+    --use_se
+
+python test_unet.py \
+    --model_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p9_wdice0p1/unet_resnet34-best.pth" \
+    --model_type "unet_resnet34" \
+    --test_image_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Images/" \
+    --test_mask_path "/home/data/sam-unet/shi_ce/xiangdao_data14/Test_Labels/" \
+    --save_path "./checkpoints8/unet_resnet34_bce_dice_loss_aspp_se_training_Mosaic_4_seed33_bce_dice_wbce0p9_wdice0p1/test_results/" \
+    --visualize \
+    --input_size "352" \
+    --num_classes "1" \
+    --batch_size "1" \
+    --threshold "0.5" \
+    --use_aspp \
+    --use_se
