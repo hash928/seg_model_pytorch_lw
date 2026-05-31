@@ -1,4 +1,30 @@
 # 结果和模型检查点保存
 save/ 
+save1/
+save2/
+seg_models/pth/
+seg_models/test_output/
+test_results/
+checkpoints/
+checkpoints1/
+checkpoints2/
+checkpoints3/
+checkpoints4/
+checkpoints5/
+checkpoints6/
+checkpoints7/
+checkpoints8/
+pretrained_models/
+.vscode/
 # Python 缓存
-__pycache__/      
+__pycache__/    
+*.pth  
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.webp
+*.mat
